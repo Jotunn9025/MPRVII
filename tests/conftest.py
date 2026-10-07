@@ -24,3 +24,13 @@ def imputed_df():
     from bhel_optimize.data import load_imputed
 
     return load_imputed()
+
+
+@pytest.fixture(scope="session")
+def boiler_frame():
+    """Canonical (imputed) dataset frame, loaded once per session."""
+    if not C.IMPUTED_CSV.exists():
+        pytest.skip("dataset CSVs not present in data/")
+    from bhel_optimize.data import load_imputed
+
+    return load_imputed()
