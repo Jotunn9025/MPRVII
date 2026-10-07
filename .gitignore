@@ -1,4 +1,5 @@
 data/
+artifacts/
 .venv/
 __pycache__/
 *.pyc
@@ -8,4 +9,3 @@ __pycache__/
 *.pt
 *.pth
 .pytest_cache/
-uv.lock
