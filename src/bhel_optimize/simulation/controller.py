@@ -158,8 +158,16 @@ class ScenarioController:
         duration_s: float | None = None,
         intensity: float = 1.0,
         target_tag: str | None = None,
+        hold: bool = False,
     ) -> ActiveFault:
-        """Start a preset scenario (implies simulation mode)."""
+        """Start a preset scenario (implies simulation mode).
+
+        ``hold=True`` keeps the fault active until :meth:`stop_scenario` is
+        called, regardless of the preset's duration. That matters for demos:
+        at high playback speed a 600 s fault is over in a couple of seconds of
+        wall-clock time, so "hold until stopped" is the practical default for
+        the UI's Inject button.
+        """
         if scenario_key not in F.SCENARIOS:
             raise KeyError(f"unknown scenario: {scenario_key}")
         scenario = F.SCENARIOS[scenario_key]
@@ -172,14 +180,19 @@ class ScenarioController:
             name=scenario.name,
             part=spec.part,
             onset_index=self.position,
-            duration_s=(
-                spec.default_duration_s if duration_s is None else float(duration_s)
-            ),
+            duration_s=self._duration(spec.default_duration_s, duration_s, hold),
             intensity=float(intensity),
             target_tag=resolved_target,
             effects=spec.effects_for(resolved_target),
         )
         return self.active
+
+    @staticmethod
+    def _duration(default_s: float, duration_s: float | None, hold: bool) -> float:
+        """Resolve a fault duration; ``hold`` means "until stopped"."""
+        if hold:
+            return float("inf")
+        return float(default_s if duration_s is None else duration_s)
 
     def start_fault(
         self,
@@ -188,6 +201,7 @@ class ScenarioController:
         duration_s: float | None = None,
         intensity: float = 1.0,
         target_tag: str | None = None,
+        hold: bool = False,
     ) -> ActiveFault:
         """Start a raw fault from the fault library."""
         if fault_key not in F.FAULTS:
@@ -201,9 +215,7 @@ class ScenarioController:
             name=spec.name,
             part=spec.part,
             onset_index=self.position,
-            duration_s=(
-                spec.default_duration_s if duration_s is None else float(duration_s)
-            ),
+            duration_s=self._duration(spec.default_duration_s, duration_s, hold),
             intensity=float(intensity),
             target_tag=resolved_target,
             effects=spec.effects_for(resolved_target),

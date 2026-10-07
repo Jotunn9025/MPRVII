@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}BHEL-Optimize | Boiler Lifecycle Monitoring{% endblock %}</title>
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">BO</span>
+      <div>
+        <h1>BHEL-OptimizeTensorFlow — Boiler Lifecycle Monitoring</h1>
+        <p class="sub">CFB boiler · per-part anomaly ensembles · Overview Agent</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="clock" class="clock">--:--:--</span>
+      <a class="link" href="/">Boiler</a>
+    </div>
+  </header>
+  {% block content %}{% endblock %}
+  <footer class="footer">
+    <span>Data: industrial boiler time-series (Cao et al., Scientific Data 2025) · Demo project — not for plant use.</span>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

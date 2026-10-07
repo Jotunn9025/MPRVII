@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Boiler overview — BHEL-Optimize{% endblock %}
+
+{% block content %}
+<main class="layout">
+  <!-- ===================== plant status banner ===================== -->
+  <section class="banner" id="banner" data-level="NOMINAL">
+    <div class="banner-level" id="banner-level">PLANT NOMINAL</div>
+    <div class="banner-text" id="banner-summary">Waiting for first sample…</div>
+    <div class="banner-meta">
+      <span id="banner-counts" class="counts"></span>
+      <span id="banner-mode" class="tag-chip">mode: livestream</span>
+      <span id="truth-badge" class="tag-chip truth hidden">injected: none</span>
+    </div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="live" role="tab">Live monitoring</button>
+    <button class="tab" data-tab="history" role="tab">Historical view</button>
+    <span class="tabs-hint" id="tabs-hint">schematic, controls and the Overview Agent</span>
+  </nav>
+
+  <!-- ===================== LIVE TAB ===================== -->
+  <section class="tab-panel active" id="tab-live" role="tabpanel">
+    <div class="grid">
+      <section class="card diagram-card">
+        <div class="card-head">
+          <h2>Boiler schematic — live sensor values</h2>
+          <span class="hint">Click a part to focus the history panels. Colour = situation level.</span>
+        </div>
+        <div class="diagram-wrap">
+          {% include "_boiler_svg.html" %}
+        </div>
+        <div class="legend">
+          {% for name, colour in level_colours.items() %}
+            <span class="legend-item"><i style="background:{{ colour }}"></i>{{ name }}</span>
+          {% endfor %}
+          <span class="legend-item"><i class="pulse"></i>injected fault</span>
+        </div>
+        <div class="legend legend-pipes">
+          <span class="legend-item"><i class="pipe" style="background:#1D9E75"></i>steam / feedwater</span>
+          <span class="legend-item"><i class="pipe" style="background:#D85A30"></i>flue gas</span>
+          <span class="legend-item"><i class="pipe" style="background:#7F77DD"></i>combustion air</span>
+          <span class="legend-item"><i class="pipe dashed" style="background:#888780"></i>solids return</span>
+        </div>
+      </section>
+
+      <section class="card live-card">
+        <div class="card-head">
+          <h2>Live panel</h2>
+          <span class="hint" id="live-timestamp">–</span>
+        </div>
+        <div class="controls">
+          <label class="control">
+            <span>Mode</span>
+            <select id="mode-select">
+              <option value="livestream">livestream (real data)</option>
+              <option value="simulation">anomaly simulation</option>
+            </select>
+          </label>
+          <label class="control">
+            <span>Scenario</span>
+            <select id="scenario-select">
+              {% for scenario in scenarios %}
+                <option value="{{ scenario.key }}"
+                        data-category="{{ scenario.category }}"
+                        data-part="{{ scenario.part }}">
+                  {{ scenario.name }}{% if scenario.demo %} ★{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="control buttons">
+            <button id="btn-start" class="btn primary">
+              <span class="btn-label">Inject fault</span>
+              <span class="spinner" aria-hidden="true"></span>
+            </button>
+            <button id="btn-stop" class="btn">Stop fault</button>
+          </div>
+          <label class="control">
+            <span>Playback speed <b id="speed-value">5</b> samples/s</span>
+            <input type="range" id="speed-range" min="1" max="60" step="1" value="5">
+          </label>
+          <div class="control buttons">
+            <button id="btn-reset" class="btn ghost">Rewind</button>
+          </div>
+        </div>
+        <table class="parts-table">
+          <thead>
+            <tr><th>Part</th><th>Level</th><th>Score</th><th>Trend</th><th>Severity</th></tr>
+          </thead>
+          <tbody id="parts-body"></tbody>
+        </table>
+      </section>
+
+      <section class="card scenario-card" id="scenario-card" data-active="false">
+        <div class="card-head">
+          <h2>Active scenario</h2>
+          <span class="hint" id="scenario-hint">nothing injected</span>
+        </div>
+        <div class="scenario-body">
+          <div class="scenario-main">
+            <div class="scenario-name" id="scenario-name">No fault injected</div>
+            <div class="scenario-meta" id="scenario-meta">
+              Pick a scenario and press <b>Inject fault</b>. The fault stays active until you stop it.
+            </div>
+            <div class="sev-bar" title="injected fault severity (IQR units)">
+              <div class="sev-fill" id="sev-fill"></div>
+            </div>
+            <div class="scenario-meta mono" id="scenario-truth">–</div>
+          </div>
+          <button id="btn-stop-2" class="btn">Stop fault</button>
+        </div>
+      </section>
+
+      <section class="card agent-card">
+        <div class="card-head">
+          <h2>Overview Agent</h2>
+          <span class="hint">template summaries (micro-LM lands in Phase 2)</span>
+        </div>
+        <div id="agent-summary" class="agent-summary">–</div>
+        <ul id="agent-list" class="agent-list"></ul>
+      </section>
+    </div>
+  </section>
+
+  <!-- ===================== HISTORY TAB ===================== -->
+  <section class="tab-panel" id="tab-history" role="tabpanel">
+    <section class="card">
+      <div class="card-head">
+        <h2>Plant level timeline</h2>
+        <span class="hint">each cell is one poll; colour = plant situation</span>
+      </div>
+      <canvas id="plant-strip" height="46"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Anomaly score — every part, its own axis</h2>
+        <span class="hint">dashed line = that part's calibrated threshold</span>
+      </div>
+      <div class="panel-grid">
+        {% for key in part_keys %}
+        <div class="history-panel" data-part="{{ key }}">
+          <div class="panel-head">
+            <span class="panel-title">{{ parts[key].name }}</span>
+            <span class="panel-meta" data-role="meta">crit {{ parts[key].criticality }}</span>
+          </div>
+          <canvas class="panel-canvas" data-part="{{ key }}" height="120"></canvas>
+          <div class="panel-foot">
+            <span class="level-pill NOMINAL" data-role="level">NOMINAL</span>
+            <span class="mono" data-role="score">–</span>
+            <span class="mono" data-role="axis">–</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Sensor traces — <span id="tag-panel-part">–</span></h2>
+        <label class="inline-control">
+          focus part
+          <select id="focus-select">
+            {% for key in part_keys %}
+              <option value="{{ key }}">{{ parts[key].name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="panel-grid" id="tag-panels"></div>
+    </section>
+  </section>
+</main>
+
+<div id="toast-host" class="toast-host" aria-live="polite"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.BHEL = {
+    levelColours: {{ level_colours|tojson }},
+    partKeys: {{ part_keys|tojson }},
+  };
+</script>
+<script src="{{ static_url('js/app.js') }}"></script>
+{% endblock %}

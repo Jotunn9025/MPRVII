@@ -53,9 +53,11 @@ recreates the boiler with live values and scenario colours.
 | `src/bhel_optimize/overview/situation.py` | Level bands (measured clean-data quantiles), persistence, trend, plant roll-up, fault-pattern matcher | done |
 | `src/bhel_optimize/overview/agent.py` | `OverviewAgent`: scores every part on the live sample, tracks state, writes explanations | done |
 | `src/bhel_optimize/overview/api.py` | Flask app: `/api/situation`, `/api/health` | done |
-| `src/bhel_optimize/server/` | Flask app, `/api/live`, `/api/scenarios` | not started (M6) |
-| `templates/`, `static/` | Jinja templates, CSS, vanilla JS | placeholders only |
-| `tests/` | 153 tests (config, loader, preprocess, faults, controller, report, detection, overview) | passing |
+| `src/bhel_optimize/server/app.py` | Flask app: pages + `/api/live`, `/api/situation`, `/api/scenarios`, `/api/mode`, `/api/speed`, `/api/reset`, `/api/health` | done |
+| `templates/` | `base.html`, `boiler.html` (main demo), `_boiler_svg.html` (schematic), `part.html`, `not_found.html` | done |
+| `static/css/app.css`, `static/js/app.js` | Dark control-room theme; vanilla-JS poller, SVG renderer, canvas graphs, controls | done |
+
+| `tests/` | 169 tests (config, loader, preprocess, faults, controller, report, detection, overview, server) | passing |
 
 ## Key decisions (with rationale)
 
@@ -145,6 +147,60 @@ recreates the boiler with live values and scenario colours.
   propagation matrix. Phase 2 replaces these templates with the micro-LM.
 - `GET /api/situation` returns plant level + counts + summary, per-part details,
   attention list, matched patterns, and the simulator's ground-truth labels.
+
+## UI layer (M6) at a glance
+
+- Run: `uv run python -m bhel_optimize.server` (options `--speed`, `--port`,
+  `--host`). First start builds the Overview Agent (~25 s: load ensembles +
+  measure clean-data level bands).
+- Pages: `/` main demo (schematic + live panel + graphs + agent panel),
+  `/part/<key>` detail, `/api/*` JSON APIs.
+- The JS poller keeps its own ring buffers (300 samples) for the graphs, so no
+  server-side history endpoint is needed; clicking a part switches the traces.
+- Faults started from the UI pass `hold=True` (active until Stop) — at 40×
+  playback a 600 s preset fault would otherwise finish in ~2 s of wall clock.
+- Scenario/preset metadata for the dropdown comes from the same generated fault
+  library (`/api/scenarios`), so UI and simulation cannot drift.
+- Two tabs: **Live** (schematic, controls, Active-scenario panel, Overview
+  Agent) and **Historical view** (plant level strip + one score panel per part +
+  one panel per tag of the focused part). Every panel draws its **own axes**
+  (min/max labels, grid, threshold line, sample range) — sharing canvases caused
+  two series with different units to be plotted on one scale.
+- Fault injection feedback: busy button (spinner/disabled), toast with the
+  injected scenario + ground-truth part, and an Active-scenario panel showing
+  elapsed simulated time, intensity, severity in IQR units and whether the
+  detector flagged the injected part. `injectFault()` always sends
+  `hold: true`, so a fault stays active until Stop regardless of playback speed.
+- **The diagram is parked** pending the user's Mermaid version — see
+  `.agents/diagram.md` for the canonical Mermaid source, the part-key ↔ node ↔
+  tag mapping and the hooks the UI needs. The stopgap SVG description below is
+  kept only so the existing wiring stays understood.
+- The stopgap schematic (`templates/_boiler_svg.html`) is a hand-drawn SVG in three
+  lanes: steam/water (top), combustion + flue gas (middle: furnace → cyclone
+  separator → economizer → air preheater → dust collector → ID fan → stack),
+  combustion air (bottom). Labels and live values sit *inside* their shapes so
+  ducts cannot cross text. `tests/test_diagram.py` parses the SVG and enforces
+  the layout invariants (no shape overlaps, no stray text, ducts all have
+  direction and terminate outside parts) — exceedance there means the picture is
+  wrong, not just a failing assertion.
+
+## JSON transport rule (learned the hard way)
+
+- **Never let a non-finite float reach the wire.** A fault held until stopped has
+  `duration_s = inf`; Python's `json` emits bare `Infinity`, which is *invalid
+  JSON* — browsers fail with "JSON.parse: unexpected character" while
+  `json.loads` (and Flask's test client) happily accept it, so tests can pass
+  while the UI is completely broken. Symptoms looked like a UI bug ("live poll
+  failed") but were a backend serialisation bug.
+- Fix: `bhel_optimize.jsonio.json_safe()` maps non-finite floats to `null` and is
+  applied to every payload (`live_payload`, `situation_payload`,
+  `scenario_state`, scenarios, health); both app factories set
+  `app.json.allow_nan = False` so any future leak raises in tests instead of
+  breaking a browser. Held faults are reported as `"held": true` with
+  `duration_s: null`.
+- Regression test: `tests/test_server.py::test_payloads_never_emit_infinity_or_nan`
+  fetches the **raw bytes** and parses them with a strict `parse_constant` that
+  rejects `Infinity`/`NaN` — `get_json()` alone would not catch this class of bug.
 
 ## Environment pitfall found (GPU training)
 

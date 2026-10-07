@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ part.name }} — BHEL-Optimize{% endblock %}
+
+{% block content %}
+<main class="layout">
+  <section class="banner" id="banner" data-level="NOMINAL">
+    <div class="banner-level" id="banner-level">{{ part.name }}</div>
+    <div class="banner-text" id="banner-summary">criticality {{ part.criticality }} · {{ part.description }}</div>
+    <div class="banner-meta">
+      <span id="banner-counts" class="counts"></span>
+      <a class="link" href="/">← back to boiler</a>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card-head">
+        <h2>Monitored tags</h2>
+        <span class="hint" id="live-timestamp">–</span>
+      </div>
+      <table class="parts-table" id="tag-table">
+        <thead><tr><th>Tag</th><th>Sensor</th><th>Value</th><th>Deviation</th></tr></thead>
+        <tbody>
+          {% for tag, description in tags %}
+          <tr data-tag="{{ tag }}">
+            <td class="mono">{{ tag }}</td>
+            <td>{{ description }}</td>
+            <td class="mono" data-cell="value">–</td>
+            <td class="mono" data-cell="deviation">–</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Level bands &amp; ensemble</h2>
+        <span class="hint">measured on clean normal data</span>
+      </div>
+      {% if band %}
+      <table class="parts-table">
+        <tbody>
+          <tr><td>WATCH ≥</td><td class="mono">{{ '%.3f'|format(band.watch) }}</td></tr>
+          <tr><td>ALERT ≥</td><td class="mono">{{ '%.3f'|format(band.alert) }}</td></tr>
+          <tr><td>CRITICAL ≥</td><td class="mono">{{ '%.3f'|format(band.critical) }}</td></tr>
+        </tbody>
+      </table>
+      {% else %}
+      <p class="hint">No fitted ensemble found for this part.</p>
+      {% endif %}
+      {% if ensemble %}
+      <p class="hint">
+        mode <b>{{ ensemble.mode }}</b>{% if ensemble.best_key %} (selected: <span class="mono">{{ ensemble.best_key }}</span>){% endif %},
+        lookback {{ ensemble.lookback }} samples, {{ ensemble.detectors|length }} detectors
+      </p>
+      <table class="parts-table">
+        <thead><tr><th>Detector</th><th>Fusion weight</th></tr></thead>
+        <tbody>
+          {% for key, weight in ensemble.weights.items() %}
+          <tr><td class="mono">{{ key }}</td><td class="mono">{{ '%.2f'|format(weight) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </section>
+
+    <section class="card graph-card">
+      <div class="card-head">
+        <h2>{{ part.name }} — live traces</h2>
+        <span class="hint">each panel has its own scale</span>
+      </div>
+      <div class="panel-grid">
+        <div class="history-panel is-selected" data-part="{{ part_key }}">
+          <div class="panel-head">
+            <span class="panel-title">anomaly score</span>
+            <span class="panel-meta">threshold marked</span>
+          </div>
+          <canvas class="panel-canvas" data-part="{{ part_key }}" height="120"></canvas>
+          <div class="panel-foot">
+            <span class="level-pill NOMINAL" data-role="level">NOMINAL</span>
+            <span class="mono" data-role="score">–</span>
+            <span class="mono" data-role="axis">–</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel-grid" id="tag-panels" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card agent-card">
+      <div class="card-head"><h2>Overview Agent</h2></div>
+      <div id="agent-summary" class="agent-summary">–</div>
+      <ul id="agent-list" class="agent-list"></ul>
+    </section>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>window.BHEL = { partKey: "{{ part_key }}", singlePart: true };</script>
+<script src="{{ static_url('js/app.js') }}"></script>
+{% endblock %}

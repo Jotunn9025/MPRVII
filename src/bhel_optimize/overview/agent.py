@@ -253,6 +253,10 @@ class OverviewAgent:
                 "trend": trend,
                 "duration_s": duration_s,
                 "severity_iqr": round(max((abs(v) for v in deviation_map.values()), default=0.0), 3),
+                "values": {tag: float(frame.iloc[index][tag]) for tag in ensemble.tags},
+                "deviations": {
+                    tag: round(float(value), 3) for tag, value in deviation_map.items()
+                },
                 "top_tags": [
                     {
                         "tag": tag,

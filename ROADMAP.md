@@ -216,32 +216,103 @@ detection quality is the limiting factor, not the level logic.
 
 ---
 
-## Milestone 6 — UI Layer (Phase E) ⏳ not started
+## Milestone 6 — UI Layer (Phase E) ✅ complete
 
 ### 1. Boiler Recreation (SVG/CSS)
-- [ ] Draw CFB boiler: furnace, cyclone, refeeder, PA/SA/ID fans, air
-      preheaters, economizer, drum, superheater, desuperheater, main steam line
-- [ ] Live sensor readouts on each part (values, situation colour, trend arrow)
+- [x] CFB schematic: furnace, fluidized bed/hearth, steam drum, superheater +
+      attemperator, main steam line, economizer, air preheaters, PA/SA fans,
+      ID fan, return-air chambers — plus unmonitored decoration (cyclone
+      separator, refeeder, dust collector, stack, flue-gas/steam/feedwater paths)
+- [x] Live sensor readouts on each part (`values[tag]` from the agent payload),
+      situation colours (NOMINAL green → WATCH amber → ALERT orange → CRITICAL
+      red), pulse animation on the injected part, hover tooltips with all tags
 
 ### 2. Flask App & API
-- [ ] Flask server, Jinja templates, static css/vanilla js
-- [ ] /api/live endpoint (sensor values + per-part situation levels)
-- [ ] /api/scenarios endpoint (list/start/stop simulation scenarios)
+- [x] Flask server, Jinja templates (`base`, `boiler`, `part`, `not_found`),
+      static CSS + vanilla JS poller (no SPA framework)
+- [x] `GET /api/live` — per-part level/score/threshold/trend/values/deviations
+      plus plant status, mode, labels and scenario state (fast polling)
+- [x] `GET /api/situation` — full Overview Agent payload
+- [x] `GET /api/scenarios` — scenario list, part/tag metadata, current state
+- [x] `POST /api/scenarios/start|stop`, `POST /api/mode`, `POST /api/speed`,
+      `POST /api/reset`, `GET /api/health`
+- [x] Faults started from the UI are **held until stopped** (`hold=True`) so a
+      fast playback speed does not end the demo in two seconds
 
 ### 3. Demo Pages
-- [ ] Main demo page: boiler recreation with live sensor labels + scenario
-      colours (NOMINAL green → WATCH amber → ALERT orange → CRITICAL red)
-- [ ] **Live panel screen:** current sensor values, per-part situation levels,
-      Overview Agent situation summary
-- [ ] **Historical graphs:** per-tag time-series charts with anomaly flags /
-      scenario event overlay
-- [ ] **Mode dropdown/control:** switch between livestream mode (real replay)
-      and real anomaly simulations (fault scenario injection)
-- [ ] Per-part detail page (tags, sparklines, ensemble leaderboard,
-      detection history)
-- [ ] Polling every 1–2 s via fetch/JSON (basic server)
+- [x] Main demo page: boiler schematic + scenario colours, live panel (parts
+      table sorted by severity), Overview Agent panel with explanations,
+      truth-vs-detection chip
+- [x] **Historical graphs:** per-part anomaly-score traces with the selected
+      part's threshold line, plus live per-tag traces (canvas)
+- [x] **Mode dropdown/control:** livestream ↔ anomaly simulation, scenario
+      picker, inject/stop, speed slider, rewind
+- [x] Per-part detail page: tags table with live values and IQR deviations,
+      level bands, ensemble mode/weights
+- [x] Polling every 1.2 s (live) and 4 s (situation) via fetch/JSON
 
-**Checkpoint:** full demo runs end-to-end in browser.
+**Checkpoint:** full demo runs end-to-end in browser ✅ (verified via API:
+pages 200, /api/live updates, injected fault held and reflected in levels;
+covered by 16 server tests)
+
+### 4. Schematic — ✅ rebuilt from the user's reference design
+- [x] Rebuilt the boiler schematic as a real left-to-right process flow with
+      lanes (steam/water on top, combustion + flue gas in the middle, combustion
+      air at the bottom) instead of overlapping boxes with stray ducts
+- [x] Every part now carries label + live value *inside* its shape, so ducts and
+      text cannot collide; flue path cycles furnace → cyclone separator →
+      economizer → air preheater → dust collector → ID fan → stack
+> **Adopted:** the user supplied `.agents/cfb_boiler.html` (CFB cutaway with
+> circuit-based colours). `templates/_boiler_svg.html` is now that design —
+> geometry, palette, typography and 1–8 numbering preserved — with live-value
+> hooks and situation-level strokes added. The Mermaid source in
+> `.agents/diagram.md` stays as process documentation.
+
+- [x] `tests/test_diagram.py` (10 tests) guards the drawing: parses the SVG and
+      asserts every part is drawn with a label + value, is keyboard reachable,
+      ducts exist and show direction, no two part shapes overlap, no text lands
+      inside another part, and no duct ends inside a part. Checks are
+      **shape-wise** (parts may own disjoint pieces: return-air chambers, fans)
+      with one documented exception (the bed is drawn inside the furnace shell)
+
+### 4b. Schematic polish (user sign-off round)
+- [x] Live value moved next to the part name inside each box (right-aligned on
+      the name line, per-box font size; return-air readout sits just outside
+      because that box is too narrow for both)
+- [x] Box fill now follows NOMINAL / WATCH / ALERT / CRITICAL with a brighter
+      fill plus pulsing outline for the injected fault; pipes keep their
+      circuit colours (steam / feedwater / flue gas / combustion air / solids)
+- [x] Legend removed from the SVG; the page legend now lists levels *and* pipe
+      colours
+- [x] `data-level="NOMINAL"` in the markup so boxes are tinted before the first
+      poll (prevents a light-box/light-text flash in dark mode)
+- [x] New tests: name+value must share a line and fit inside their box, no
+      legend text in the SVG, and the CSS must colour boxes by level
+
+### 5. UI feedback & history redesign (user feedback round)
+- [x] **Fault injection is now visibly responsive:** the Inject button enters a
+      busy state (spinner + disabled + "Injecting…"), a toast confirms the
+      injected scenario and its ground-truth part, and the mode select follows
+      the server's real mode on every poll
+- [x] **Active-scenario panel:** scenario name, ground-truth part, simulated
+      elapsed time, intensity, a severity bar (IQR units), whether the detector
+      flagged that part, and a second Stop button
+- [x] **Historical view is its own tab** (`data-tab="history"`), with the Live
+      tab holding the schematic, controls and Overview Agent
+- [x] **One panel per series, each with its own axes:** every part gets a
+      server-rendered score panel (own min/max labels, grid, threshold line,
+      sample range) instead of two shared canvases; sensor traces get one panel
+      per tag with independent scales
+- [x] **Plant level strip:** a colour-coded timeline of the plant situation
+- [x] **Focus-part selector** in the history tab, synced with clicking the
+      schematic or a table row
+- [x] `/api/live` now also returns per-tag `deviations` for the tag panels
+- [x] Tests: 4 new server tests (tabs, one panel per part, inject-feedback
+      hooks, front-end wiring) — suite at 181 tests
+
+### 6. Deferred UI items ⚠ deferred
+- [ ] Dataset analytics/exploration page
+- [ ] Browser-side visual regression test (no headless browser available here)
 
 ---
 

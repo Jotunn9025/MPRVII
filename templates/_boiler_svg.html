@@ -1,0 +1,160 @@
+<svg id="boiler-svg" width="100%" viewBox="0 0 680 540" role="img">
+  <title>CFB boiler cutaway — live sensor values</title>
+  <desc>Cutaway of a circulating fluidized bed boiler: furnace and bed, cyclone separator, steam drum, back pass (superheater, economizer, air preheaters), flue-gas train (dust collector, induced draft fan, stack) and combustion air. Each monitored box shows its part name with the live sensor value, and is coloured by situation level: nominal, watch, alert or critical.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- drum ↔ furnace connectors -->
+  <line x1="140" y1="75" x2="140" y2="95" class="conn" style="stroke:#1D9E75;stroke-width:2"/>
+  <line x1="220" y1="75" x2="220" y2="95" class="conn" style="stroke:#1D9E75;stroke-width:2"/>
+
+  <!-- ============ steam drum / pot ============ -->
+  <g class="c-teal part" data-part="drum" data-level="NOMINAL" tabindex="0">
+    <rect x="120" y="28" width="260" height="46" rx="23" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="130" y="44" font-size="13" dominant-baseline="central">Steam drum / pot</text>
+    <text class="ts" x="250" y="61" text-anchor="middle" dominant-baseline="central">PTCA_8322A · PTCA_8324</text>
+    <text class="part-value" x="370" y="44" text-anchor="end" dominant-baseline="central">–</text>
+  </g>
+
+  <!-- ============ 1 furnace ============ -->
+  <g class="c-coral part" data-part="furnace" data-level="NOMINAL" tabindex="0">
+    <rect x="100" y="95" width="160" height="325" rx="8" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="110" y="118" font-size="12" dominant-baseline="central">1 Furnace</text>
+    <text class="part-value" x="250" y="118" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="180" y="138" text-anchor="middle" dominant-baseline="central">PT_8313A–F · TE_8313B</text>
+    <text class="ts" x="180" y="246" text-anchor="middle" dominant-baseline="central">Gas + solids</text>
+  </g>
+  <line x1="180" y1="318" x2="180" y2="260" class="arr inner" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+
+  <!-- ============ fluidized bed / hearth ============ -->
+  <g class="c-amber part" data-part="fluidized_bed" data-level="NOMINAL" tabindex="0">
+    <rect x="108" y="330" width="144" height="82" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="118" y="350" font-size="11" dominant-baseline="central">Bed / hearth</text>
+    <text class="part-value" x="242" y="350" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="180" y="371" text-anchor="middle" dominant-baseline="central">SXLTCYZ/Y</text>
+    <text class="ts" x="180" y="389" text-anchor="middle" dominant-baseline="central">ZCLCCY/YCLCCY</text>
+  </g>
+
+  <!-- ============ coal feeder (not instrumented) ============ -->
+  <g class="c-gray">
+    <rect x="10" y="300" width="70" height="44" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="45" y="315" text-anchor="middle" dominant-baseline="central">Coal</text>
+    <text class="th" x="45" y="332" text-anchor="middle" dominant-baseline="central">feeder</text>
+  </g>
+  <line x1="81" y1="322" x2="98" y2="322" class="arr" style="stroke:#888780" marker-end="url(#arrow)"/>
+
+  <!-- ============ 2 cyclone separator (not instrumented) ============ -->
+  <g class="c-gray">
+    <rect x="295" y="110" width="90" height="100" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <polygon points="295,210 385,210 350,275 330,275" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="340" y="148" text-anchor="middle" dominant-baseline="central">2 Cyclone</text>
+    <text class="ts" x="340" y="166" text-anchor="middle" dominant-baseline="central">separator</text>
+  </g>
+  <line x1="261" y1="150" x2="293" y2="150" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+
+  <line x1="340" y1="277" x2="340" y2="310" class="arr" style="stroke:#888780;stroke-dasharray:4 3" marker-end="url(#arrow)"/>
+  <g class="c-gray">
+    <rect x="300" y="312" width="80" height="40" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="340" y="332" text-anchor="middle" dominant-baseline="central">Refeeder</text>
+  </g>
+  <line x1="299" y1="332" x2="262" y2="332" class="arr" style="stroke:#888780;stroke-dasharray:4 3" marker-end="url(#arrow)"/>
+
+  <!-- ============ return air chambers ============ -->
+  <g class="c-purple part" data-part="return_air" data-level="NOMINAL" tabindex="0">
+    <rect x="280" y="378" width="100" height="64" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="330" y="395" text-anchor="middle" dominant-baseline="central">Return air</text>
+    <text class="th" x="330" y="411" text-anchor="middle" dominant-baseline="central">chambers</text>
+    <text class="ts" x="330" y="428" text-anchor="middle" dominant-baseline="central">FT_8306A/B</text>
+    <!-- value sits outside: this box is too narrow for name + value on one line -->
+    <text class="part-value" x="386" y="395" text-anchor="start" font-size="11" dominant-baseline="central">–</text>
+  </g>
+  <line x1="279" y1="410" x2="262" y2="410" class="arr" style="stroke:#7F77DD" marker-end="url(#arrow)"/>
+
+  <!-- ============ 3 superheater + attemperator ============ -->
+  <g class="c-teal part" data-part="superheater" data-level="NOMINAL" tabindex="0">
+    <rect x="428" y="96" width="144" height="80" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="438" y="116" font-size="11" dominant-baseline="central">3 Superheater</text>
+    <text class="part-value" x="562" y="168" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="500" y="136" text-anchor="middle" dominant-baseline="central">+ attemperator</text>
+    <text class="ts" x="500" y="154" text-anchor="middle" dominant-baseline="central">TV_8329ZC · YJJWSLL</text>
+  </g>
+
+  <!-- ============ 4 economizer ============ -->
+  <g class="c-teal part" data-part="economizer" data-level="NOMINAL" tabindex="0">
+    <rect x="428" y="192" width="144" height="80" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="438" y="212" font-size="11" dominant-baseline="central">4 Economizer</text>
+    <text class="part-value" x="562" y="264" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="500" y="233" text-anchor="middle" dominant-baseline="central">TE_8319A/B</text>
+    <text class="ts" x="500" y="251" text-anchor="middle" dominant-baseline="central">AIR_8301A/B</text>
+  </g>
+
+  <!-- ============ 5 air preheaters ============ -->
+  <g class="c-purple part" data-part="air_preheaters" data-level="NOMINAL" tabindex="0">
+    <rect x="428" y="288" width="144" height="70" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="438" y="310" font-size="11" dominant-baseline="central">5 Air preheaters</text>
+    <text class="part-value" x="562" y="348" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="500" y="332" text-anchor="middle" dominant-baseline="central">TE_8303 · TE_8304</text>
+  </g>
+
+  <line x1="500" y1="177" x2="500" y2="191" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+  <line x1="500" y1="273" x2="500" y2="287" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+  <line x1="386" y1="160" x2="427" y2="160" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+
+  <!-- ============ main steam line ============ -->
+  <g class="c-teal part" data-part="main_steam" data-level="NOMINAL" tabindex="0">
+    <rect x="428" y="28" width="144" height="46" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="438" y="44" font-size="11" dominant-baseline="central">Main steam</text>
+    <text class="part-value" x="562" y="44" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="500" y="62" text-anchor="middle" dominant-baseline="central">TE_8332A · ZZQBCHLL</text>
+  </g>
+  <line x1="500" y1="95" x2="500" y2="77" class="arr" style="stroke:#1D9E75" marker-end="url(#arrow)"/>
+  <line x1="573" y1="51" x2="600" y2="51" class="arr" style="stroke:#1D9E75" marker-end="url(#arrow)"/>
+  <text class="ts" x="606" y="51" dominant-baseline="central">Turbine</text>
+
+  <path d="M380 51 H415 V108 H426" fill="none" class="arr" style="stroke:#1D9E75" marker-end="url(#arrow)"/>
+  <path d="M427 232 H398 V88 H360 V77" fill="none" class="arr" style="stroke:#1D9E75" marker-end="url(#arrow)"/>
+  <line x1="650" y1="232" x2="574" y2="232" class="arr" style="stroke:#1D9E75" marker-end="url(#arrow)"/>
+  <text class="ts" x="596" y="218" dominant-baseline="central">Feedwater</text>
+
+  <!-- ============ PA / SA fans ============ -->
+  <g class="c-purple part" data-part="combustion_fans" data-level="NOMINAL" tabindex="0">
+    <rect x="100" y="470" width="160" height="56" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="110" y="490" font-size="12" dominant-baseline="central">PA / SA fans</text>
+    <text class="part-value" x="250" y="490" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="180" y="511" text-anchor="middle" dominant-baseline="central">FT_8301 · FT_8302</text>
+  </g>
+  <line x1="180" y1="469" x2="180" y2="423" class="arr" style="stroke:#7F77DD" marker-end="url(#arrow)"/>
+  <text class="ts" x="190" y="448" dominant-baseline="central">Primary air</text>
+  <path d="M261 498 H405 V322 H426" fill="none" class="arr" style="stroke:#7F77DD" marker-end="url(#arrow)"/>
+  <text class="ts" x="333" y="484" text-anchor="middle" dominant-baseline="central">Air to preheater</text>
+  <line x1="427" y1="300" x2="263" y2="300" class="arr" style="stroke:#7F77DD" marker-end="url(#arrow)"/>
+  <text class="ts" x="352" y="288" dominant-baseline="central">Hot air</text>
+
+  <!-- ============ 6 dust collector (not instrumented) ============ -->
+  <g class="c-gray">
+    <rect x="420" y="386" width="160" height="40" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="500" y="406" text-anchor="middle" dominant-baseline="central">6 Dust collector</text>
+  </g>
+
+  <!-- ============ 7 induced draft fan ============ -->
+  <g class="c-coral part" data-part="id_fan" data-level="NOMINAL" tabindex="0">
+    <rect x="420" y="453" width="160" height="50" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="430" y="471" font-size="12" dominant-baseline="central">7 ID fan</text>
+    <text class="part-value" x="570" y="471" text-anchor="end" font-size="11" dominant-baseline="central">–</text>
+    <text class="ts" x="500" y="491" text-anchor="middle" dominant-baseline="central">YFJ3_AI · YFJ3_ZD1/ZD2</text>
+  </g>
+  <line x1="500" y1="359" x2="500" y2="385" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+  <line x1="500" y1="427" x2="500" y2="452" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+
+  <!-- ============ 8 stack (not instrumented) ============ -->
+  <g class="c-gray">
+    <rect x="604" y="340" width="64" height="163" rx="6" stroke-width="0.5" fill="#F1EFE8" stroke="#8A8F98"/>
+    <text class="th" x="636" y="420" text-anchor="middle" dominant-baseline="central">8 Stack</text>
+  </g>
+  <line x1="581" y1="478" x2="602" y2="478" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+  <line x1="636" y1="339" x2="636" y2="314" class="arr" style="stroke:#D85A30" marker-end="url(#arrow)"/>
+  <text class="ts" x="636" y="302" text-anchor="middle" dominant-baseline="central">Atmosphere</text>
+</svg>
