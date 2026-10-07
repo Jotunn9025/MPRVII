@@ -44,11 +44,16 @@ recreates the boiler with live values and scenario colours.
 | `src/bhel_optimize/simulation/faults.py` | Fault library (FOPDT dynamics) + propagation matrix + scenario presets | done |
 | `src/bhel_optimize/simulation/controller.py` | `ScenarioController`: modes, wall-clock playback, injection, labels, `run_series` | done |
 | `src/bhel_optimize/simulation/report.py` | Generates `.agents/scenarios.md` from the fault library | done |
-| `src/bhel_optimize/detection/` | Per-part hybrid ensembles, thresholds, leaderboard | not started (M4) |
+| `src/bhel_optimize/detection/windows.py` | Sliding windows, score scatter/sub-sampling, level+first-difference features | done |
+| `src/bhel_optimize/detection/detectors.py` | 9 detectors: `ewma_mad`, `mean_shift`, `staleness`, `dense_ae`, `lstm_residual`, `tcn_ae`, `transformer_residual`, `isolation_forest`, `ocsvm` | done |
+| `src/bhel_optimize/detection/ensembles.py` | Clipped-z normalisation, AUROC-weighted fusion, threshold calibration, `PartEnsemble` save/load | done |
+| `src/bhel_optimize/detection/evaluate.py` | AUROC (+bootstrap CI), PR/F1, FAR, latency, severity-banded recall, alarm smoothing | done |
+| `src/bhel_optimize/detection/data.py` | Labelled evaluation series from injected scenarios (per-part local severity) | done |
+| `src/bhel_optimize/detection/train.py` | Trainer + CLI, leaderboard JSON + generated Markdown | done |
 | `src/bhel_optimize/overview/` | Overview Agent: situation levels + summaries + `/api/situation` payload | not started (M5) |
 | `src/bhel_optimize/server/` | Flask app, `/api/live`, `/api/scenarios` | not started (M6) |
 | `templates/`, `static/` | Jinja templates, CSS, vanilla JS | placeholders only |
-| `tests/` | 90 tests (config, loader, preprocess, faults, controller) | passing |
+| `tests/` | 126 tests (config, loader, preprocess, faults, controller, report, detection) | passing |
 
 ## Key decisions (with rationale)
 
@@ -88,6 +93,51 @@ recreates the boiler with live values and scenario colours.
 - 12 faults across 4 categories: 4 creeping, 5 abrupt, 2 sensor, 1 global;
   every process fault drives 3+ tags spanning 2+ parts
 - Documented matrix: `.agents/scenarios.md` (generated)
+
+## Detection layer (M4) at a glance
+
+- Train: detectors are fitted on **normal-only** training windows (the 530–545 °C
+  rule is applied *before* scaling — applying it to z-scored data silently
+  yields zero training windows).
+- Features: each part's windows carry tag **levels + first differences**
+  (`part_features`); levels alone separated poorly.
+- Scores: per-detector **clipped robust z** against the normal-validation
+  distribution (NOT percentile mapping — that saturates at 1.0 and destroys the
+  tail where detections live).
+- Fusion: weights ∝ (validation AUROC − 0.5), weak detectors dropped; the
+  **fused ensemble competes with individual detectors** and is only selected
+  when it wins on validation (fusion was often worse than its best member).
+- Threshold: accuracy-optimal on validation scenarios, capped by the
+  false-alarm budget (default 5%) via the clean-sample score quantile.
+- Alarms are **smoothed** (12-sample NaN-aware moving average = 1 min).
+- Evaluation: injected scenarios pooled over 4 start offsets; positives =
+  samples with ≥0.1 IQR *local* injection; recall reported per severity band;
+  real "tailed" rows and <0.1 IQR injections excluded.
+- Run: `uv run python -m bhel_optimize.detection.train` (≈4 min, all 10 parts)
+  → `artifacts/detection/` + `.agents/leaderboard.md`.
+
+### Accuracy reality check (do not overstate)
+
+- There are **no per-part fault labels** in the dataset, so per-part accuracy is
+  measured against our own injected faults (user-approved).
+- Test AUROC ≈0.31–0.85 by part; ≥1 IQR faults are usually caught, <0.5 IQR
+  injections mostly are not. Part ranks are more trustworthy than absolute
+  values (config changes moved some parts by >0.1 AUROC).
+- Two bugs worth remembering: window-local MAD denominators must be floored at
+  a fraction of a per-tag reference spread (otherwise flat stretches produce
+  1e7 scores on *normal* data), and severity banding must use each part's own
+  local injection rather than the fault's global severity.
+
+## Environment pitfall found (GPU training)
+
+- TensorFlow 2.21 needs `libdevice.10.bc` for XLA GPU kernel compilation. The
+  generic wheel does not ship it, so GPU training failed with
+  `INTERNAL: JIT compilation failed` / `libdevice not found` even though
+  `tf.config.list_physical_devices("GPU")` succeeded and plain matmuls worked.
+- Fix: `uv add nvidia-cuda-nvcc-cu12` (TF's loader already searches
+  `site-packages/nvidia/cuda_nvcc/nvvm/libdevice`). nix-ld is enabled, which is
+  what lets these pip CUDA libraries load on NixOS.
+- `jit_compile=False` does **not** avoid it (TF still autotunes GPU kernels).
 
 ## Verified facts / pitfalls
 

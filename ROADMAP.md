@@ -122,31 +122,58 @@ but postponed.
 
 ---
 
-## Milestone 4 — Detection Layer (Phase C) ⏳ not started
+## Milestone 4 — Detection Layer (Phase C) ✅ complete (accuracy caveat noted)
 
 ### 1. Per-Part Ensemble Models (TensorFlow/Keras)
-- [ ] LSTM prediction-residual model (drift + fast faults)
-- [ ] Dense autoencoder reconstruction (correlated multivariate window)
-- [ ] 1D-TCN autoencoder (Opt-TCAE-style, tube-leak candidate)
-- [ ] Transformer forecaster residual (only where it wins)
-- [ ] Statistical/robust baselines: EWMA, MAD, Isolation Forest, One-Class SVM
+- [x] LSTM prediction-residual model (`lstm_residual`)
+- [x] Dense autoencoder reconstruction (`dense_ae`)
+- [x] 1D-TCN autoencoder (`tcn_ae`, Opt-TCAE-style)
+- [x] Transformer forecaster residual (`transformer_residual`) — implemented,
+      **excluded from the default candidate set** as heavy (enable with
+      `--include-heavy`); it never won on validation
+- [x] Statistical/robust baselines: `ewma_mad`, `mean_shift` (control chart),
+      `staleness` (stuck-sensor/variance collapse), Isolation Forest, One-Class SVM
+- [x] First-difference feature channels added alongside tag levels (levels alone
+      were weak; most fault signatures are rate-of-change phenomena)
 
 ### 2. Ensemble Fusion & Thresholds
-- [x] **Decision:** hybrid ensemble strategy (user-approved): 2–3 candidates
-      per part (TF autoencoder + LSTM-residual, plus Isolation Forest /
-      One-Class SVM baselines), weighted fusion with percentile thresholds,
-      fall back to single best model when one clearly dominates
-- [ ] Per-part weighted voting/averaging (weights learned on validation)
-- [ ] Score calibration: percentile thresholds on normal val slice
-- [ ] Select best-per-model when a single model dominates per part
-- [ ] Per-part leaderboard (AUROC, F1, latency, false-alarm rate)
+- [x] Per-part weighted fusion (weights from validation AUROC; weak detectors
+      dropped) — `weights_from_auroc`
+- [x] Score calibration: clipped robust z against the normal-only validation
+      distribution (percentile mapping was tried and rejected: it saturates at
+      1.0 and destroys tail resolution)
+- [x] Alarm smoothing (NaN-aware moving average, 12 samples = 1 min)
+- [x] Selection = **best of {all detectors, fused ensemble} on validation**;
+      fusion is only used when it actually wins (fusion was frequently worse
+      than its best member)
+- [x] Threshold: accuracy-optimal on validation scenarios but never more
+      permissive than the false-alarm budget (default 5%)
+- [x] Per-part leaderboard with AUROC + bootstrap CI, F1, precision, recall,
+      FAR(clean), severity-banded recall, latency → `.agents/leaderboard.md`
 
 ### 3. Evaluation
-- [ ] Against real 8.6% "tailed" anomalies (global detection accuracy)
-- [ ] Against synthetic per-part faults (per-part detection accuracy)
-- [ ] Leaderboard saved + documented
+- [x] Against synthetic per-part faults (per-part detection accuracy) — labels
+      are **local per-part severity** in IQR units, pooled over 4 start offsets
+- [x] Against the real 8.6% "tailed" class (global check on `main_steam`)
+- [x] Leaderboard saved + documented (`.agents/leaderboard.md`, JSON at
+      `artifacts/detection/leaderboard.json`)
 
-**Checkpoint:** models saved, leaderboard produced, evaluation metrics reported.
+**Checkpoint:** models saved, leaderboard produced, evaluation metrics reported ✅
+
+**⚠ Accuracy caveat (documented in the report):** the dataset ships no per-part
+fault labels, so per-part accuracy is measured against *injected simulated
+faults*. Test AUROC ranges ≈0.31–0.85 by part; faults that reach ≥1 IQR of a
+tag's spread are usually detected (recall up to 0.82–1.00), while injections
+below ~0.5 IQR are largely missed — creeping faults are only detectable once
+they exceed the local noise floor. Part-level numbers moved by >0.1 AUROC
+between training configs, so they indicate rank rather than precise accuracy.
+
+### 4. Deferred detection improvements ⚠ deferred
+- [ ] Hyperparameter search per part (window length, model width, epochs)
+- [ ] Richer features (spectral/rolling statistics, cross-tag correlations)
+- [ ] More scenarios per part + longer evaluation series (tighter error bars)
+- [ ] Physics-informed residuals (model the expected boiler response instead of
+      purely data-driven reconstruction)
 
 ---
 
