@@ -83,34 +83,42 @@ but postponed.
 
 ---
 
-## Milestone 3 — Simulation Layer (Phase B) ⏳ not started
+## Milestone 3 — Simulation Layer (Phase B) ✅ complete
 
 ### 1. Scenario Controller
-- [ ] Scenario API: start_scenario(name, ramp, duration), stop, list
-- [ ] Real-time playback of data.csv samples at configurable rate
-- [ ] Two demo modes: **livestream** (pure real-data replay) and
-      **anomaly simulation** (real replay + injected fault scenarios); UI
-      dropdown switches between them
-- [ ] Per-sample "true fault part" labels for evaluation
+- [x] Scenario API: `start_scenario(key, duration_s, intensity, target_tag)`,
+      `start_fault`, `stop_scenario`, `current_fault`, `list_scenarios`
+- [x] Real-time playback of data.csv samples at configurable rate
+      (`speed` in samples/s, wall-clock `tick()` for UI + deterministic
+      `advance()` for tests/offline, optional loop)
+- [x] Two demo modes: **livestream** (pure real-data replay) and
+      **anomaly simulation** (real replay + injected fault scenarios);
+      UI dropdown switches via `set_mode` / `start_scenario`
+- [x] Per-sample "true fault part" labels (`fault_part`, `fault_key`,
+      `fault_severity`, `fault_active`, `tailed_real`, `tailed_observed`)
 
 ### 2. Fault Injection (dynamical, FOPDT-style)
-- [ ] **Fault propagation matrix:** every injected fault drives *all*
-      physically-correlated sensors appropriately (per FOPDT coupling and the
-      process cause-chain), not just the primary tag — e.g. IDF degradation
-      shifts furnace pressure, flue-gas O₂, and economizer outlet temperature
-- [ ] Creeping faults: economizer fouling, IDF degradation, preheater fouling,
-      hearth/layer ΔP drift
-- [ ] Abrupt/structural faults: water-wall tube leak, superheater tube leak,
+- [x] **Fault propagation matrix:** every process fault drives 3+ correlated
+      tags across 2+ parts (e.g. IDF degradation moves vibration, current,
+      furnace pressures, flue-gas temps, O2, steam temp); gains are in
+      multiples of each tag's IQR (units are unpublished)
+- [x] Creeping faults: economizer fouling, IDF degradation, preheater fouling,
+      hearth/layer ΔP drift (ramp dynamics)
+- [x] Abrupt/structural faults: water-wall tube leak, superheater tube leak,
       IDF bearing failure, attemperator valve stuck/oscillation, furnace draft
-      disturbance/air in-leak, outlier sensor fault (spike/stuck)
-- [ ] Global anomaly injection: drive TE_8332A outside 530–545 °C ("tailed" samples)
-- [ ] Scenario library with documented parameters per scenario
+      disturbance/air in-leak, sensor outlier spike / stuck (step, oscillate,
+      spike, stuck dynamics)
+- [x] Global anomaly injection: drives TE_8332A outside 530–545 °C ("tailed")
+- [x] Scenario library documented and generated: `.agents/scenarios.md`
+      (`python -m bhel_optimize.simulation.report`), 4 demo presets + 8 more
 
 ### 3. Tests
-- [ ] Unit tests for scenario controller
-- [ ] Scenario outputs produce labelled time series
+- [x] Unit tests for scenario controller (modes, playback, injection, expiry,
+      labels, payloads)
+- [x] Scenario outputs produce labelled time series (`run_series` → 30 tags +
+      8 label columns, deterministic)
 
-**Checkpoint:** scenarios run end-to-end and produce labelled data.
+**Checkpoint:** scenarios run end-to-end and produce labelled data. ✅
 
 ---
 
