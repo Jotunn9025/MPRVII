@@ -27,6 +27,7 @@ from bhel_optimize import config as C
 from bhel_optimize.data import (
     chronological_split,
     fit_scalers,
+    save_scalers,
     steam_temp_labels,
     transform_tags,
 )
@@ -472,6 +473,10 @@ def train_all(cfg: TrainConfig, frame: pd.DataFrame | None = None) -> dict:
         },
         "parts": {},
     }
+
+    # persist the train-fit scalers so inference (UI/overview) uses exactly the
+    # same preprocessing the detectors were trained with
+    save_scalers(scalers, ARTIFACT_ROOT / "scalers.joblib")
 
     for part_key in parts:
         started = time.time()

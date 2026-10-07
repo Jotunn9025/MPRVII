@@ -39,6 +39,11 @@ class BaseDetector(ABC):
     name: str = "Base"
     kind: str = "statistical"  # tensorflow | sklearn | statistical
     windowed: bool = True
+    #: Fitted attributes persisted with joblib (TF models override save/load to
+    #: use the Keras format instead). Without this, loading a fitted ensemble —
+    #: e.g. an Isolation Forest that the leaderboard selected — silently
+    #: produced an unfitted detector that raised on the first score() call.
+    state_attrs: tuple[str, ...] = ()
 
     def __init__(self, lookback: int, n_tags: int, seed: int = 0) -> None:
         self.lookback = lookback
@@ -60,10 +65,31 @@ class BaseDetector(ABC):
         raise NotImplementedError
 
     def save(self, directory) -> None:
-        """Persist trained state (no-op for stateless detectors)."""
+        """Persist fitted state with joblib (no-op for stateless detectors)."""
+        if not self.state_attrs:
+            return
+        import joblib
+        from pathlib import Path
+
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        joblib.dump(
+            {attr: getattr(self, attr) for attr in self.state_attrs},
+            directory / f"{self.key}.joblib",
+        )
 
     def load(self, directory) -> None:
-        """Restore trained state (no-op for stateless detectors)."""
+        """Restore fitted state saved by :meth:`save`."""
+        if not self.state_attrs:
+            self.fitted = True
+            return
+        import joblib
+        from pathlib import Path
+
+        payload = joblib.load(Path(directory) / f"{self.key}.joblib")
+        for attr, value in payload.items():
+            setattr(self, attr, value)
+        self.fitted = True
 
 
 # --------------------------------------------------------------------------
@@ -121,6 +147,7 @@ class EWMAMADDetector(_MADWindowDetector):
     name = "EWMA / MAD (sample deviation)"
     kind = "statistical"
     tail = 1
+    state_attrs = ("reference_scale",)
 
     def score(self, windows: np.ndarray) -> np.ndarray:
         last = windows[:, -1, :]
@@ -142,6 +169,7 @@ class MeanShiftDetector(_MADWindowDetector):
     name = "Windowed mean-shift (control chart)"
     kind = "statistical"
     tail = 15
+    state_attrs = ("reference_scale",)
 
     def score(self, windows: np.ndarray) -> np.ndarray:
         tail, history = self._history(windows)
@@ -162,6 +190,7 @@ class StalenessDetector(BaseDetector):
     key = "staleness"
     name = "Staleness / variance collapse"
     kind = "statistical"
+    state_attrs = ("reference",)
 
     def __init__(self, lookback: int, n_tags: int, seed: int = 0, tail: int = 15):
         super().__init__(lookback, n_tags, seed)
@@ -191,6 +220,7 @@ class IsolationForestDetector(BaseDetector):
     key = "isolation_forest"
     name = "Isolation Forest"
     kind = "sklearn"
+    state_attrs = ("model",)
 
     def __init__(self, lookback: int, n_tags: int, seed: int = 0, n_estimators: int = 200):
         super().__init__(lookback, n_tags, seed)
@@ -222,6 +252,7 @@ class OCSVMDetector(BaseDetector):
     key = "ocsvm"
     name = "One-Class SVM"
     kind = "sklearn"
+    state_attrs = ("model", "scaler")
 
     def __init__(self, lookback: int, n_tags: int, seed: int = 0, max_fit: int = 3000):
         super().__init__(lookback, n_tags, seed)

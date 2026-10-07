@@ -50,10 +50,12 @@ recreates the boiler with live values and scenario colours.
 | `src/bhel_optimize/detection/evaluate.py` | AUROC (+bootstrap CI), PR/F1, FAR, latency, severity-banded recall, alarm smoothing | done |
 | `src/bhel_optimize/detection/data.py` | Labelled evaluation series from injected scenarios (per-part local severity) | done |
 | `src/bhel_optimize/detection/train.py` | Trainer + CLI, leaderboard JSON + generated Markdown | done |
-| `src/bhel_optimize/overview/` | Overview Agent: situation levels + summaries + `/api/situation` payload | not started (M5) |
+| `src/bhel_optimize/overview/situation.py` | Level bands (measured clean-data quantiles), persistence, trend, plant roll-up, fault-pattern matcher | done |
+| `src/bhel_optimize/overview/agent.py` | `OverviewAgent`: scores every part on the live sample, tracks state, writes explanations | done |
+| `src/bhel_optimize/overview/api.py` | Flask app: `/api/situation`, `/api/health` | done |
 | `src/bhel_optimize/server/` | Flask app, `/api/live`, `/api/scenarios` | not started (M6) |
 | `templates/`, `static/` | Jinja templates, CSS, vanilla JS | placeholders only |
-| `tests/` | 126 tests (config, loader, preprocess, faults, controller, report, detection) | passing |
+| `tests/` | 153 tests (config, loader, preprocess, faults, controller, report, detection, overview) | passing |
 
 ## Key decisions (with rationale)
 
@@ -127,6 +129,22 @@ recreates the boiler with live values and scenario colours.
   a fraction of a per-tag reference spread (otherwise flat stretches produce
   1e7 scores on *normal* data), and severity banding must use each part's own
   local injection rather than the fault's global severity.
+
+## Overview layer (M5) at a glance
+
+- `OverviewAgent.from_artifacts()` loads the fitted ensembles, the persisted
+  scalers and the per-tag baselines, then measures each part's **clean-data
+  score distribution** to set level bands (~25 s startup for 10 parts).
+- Levels: NOMINAL < q95 of normal scores → WATCH → ALERT (tuned threshold, or
+  q99.5 of normal if that is stricter) → CRITICAL (far tail). Persistence
+  (WATCH 6-of-10, ALERT 3-of-5) and a one-step-per-update rate limit stop
+  flapping; a sustained watch on a criticality-4/5 part is *reported* but does
+  not inflate the plant level.
+- Explanations quote measurable facts (score vs threshold, trend, duration,
+  tag deviations in IQR units) and name the best-matching fault pattern from the
+  propagation matrix. Phase 2 replaces these templates with the micro-LM.
+- `GET /api/situation` returns plant level + counts + summary, per-part details,
+  attention list, matched patterns, and the simulator's ground-truth labels.
 
 ## Environment pitfall found (GPU training)
 

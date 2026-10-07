@@ -177,18 +177,42 @@ between training configs, so they indicate rank rather than precise accuracy.
 
 ---
 
-## Milestone 5 — Overview Layer — Overview Agent (Phase D) ⏳ not started
+## Milestone 5 — Overview Layer — Overview Agent (Phase D) ✅ complete
 
 ### 1. Situation Levels
-- [ ] Per-part situation: NOMINAL / WATCH / ALERT / CRITICAL from calibrated
-      thresholds + trend
-- [ ] Boiler-level situation = worst level + criticality weighting
+- [x] Per-part situation NOMINAL / WATCH / ALERT / CRITICAL from **measured
+      clean-data bands** (watch = q95 of normal scores, alert = tuned threshold
+      or q99.5 of normal — whichever is more conservative, critical = far tail)
+- [x] Guards against alarm flapping: persistence gates (ALERT 3-of-5, WATCH
+      6-of-10), one-step-per-update rate limiting, trend (rising/falling/steady)
+- [x] Boiler-level situation = worst part level; **criticality drives emphasis**
+      (sustained watch on a safety-critical part is called out in the summary)
+      rather than inflating the level — inflating it made normal livestream data
+      read PLANT ALERT
+- [x] Probable-pattern matcher: compares observed tag deviations against the
+      fault library's propagation maps, combining *coverage* of a fault's local
+      signature with its *share* of the whole signature (so a single coupled tag
+      cannot make another part's fault look local); distinguishes creep from
+      abrupt faults by deviation magnitude
+- [x] Warm-up safe: reports NOMINAL with `score: null` until a full window exists
 
 ### 2. Overview Strings & API
-- [ ] Template-based explanation strings (situation, affected tags, values)
-- [ ] /api/situation endpoint (JSON) for dashboard polling
+- [x] Template-based explanation strings per part (level, score vs threshold,
+      trend, duration, most deviating tags with IQR deviation, matched pattern,
+      recommended attention) + plant headline summary
+- [x] `GET /api/situation` (JSON) via `create_overview_app` — includes plant
+      level/counts/summary, per-part levels, trends, top tags, matched patterns,
+      and the simulator's own labels (`fault_part`, `fault_active`) so the demo
+      can show truth vs. detection
+- [x] `GET /api/health` for liveness + part/threshold listing
 
-**Checkpoint:** /api/situation produces coherent overviews (Overview Agent).
+**Checkpoint:** `/api/situation` produces coherent overviews ✅
+
+**Notes / known limits (accepted for the demo):** the live monitor can still
+show WATCH/ALERT during ordinary operation because the per-part detectors are
+sensitive (up to ~5% of clean samples per part cross the tuned threshold); the
+M4 leaderboard reports the tuned-threshold accuracy separately. Per-part
+detection quality is the limiting factor, not the level logic.
 
 ---
 

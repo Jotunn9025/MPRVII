@@ -34,3 +34,8 @@ def boiler_frame():
     from bhel_optimize.data import load_imputed
 
     return load_imputed()
+
+
+def pytest_configure(config):
+    """Register custom markers (belt-and-braces with pyproject)."""
+    config.addinivalue_line("markers", "slow: slow tests (TensorFlow / full pipeline)")
