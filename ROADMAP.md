@@ -37,7 +37,9 @@ but postponed.
 ### 3. Planning
 - [x] Write PLAN.md (basic demonstration plan + future additions)
 - [x] Create ROADMAP.md (this file)
-- [ ] User review/approval of PLAN.md
+- [x] User review/approval of PLAN.md (approved with amendments:
+      hybrid ensemble, Overview Agent rename, livestream/simulation dropdown,
+      live panel + historical graphs, basic server)
 
 ---
 
@@ -79,9 +81,16 @@ but postponed.
 ### 1. Scenario Controller
 - [ ] Scenario API: start_scenario(name, ramp, duration), stop, list
 - [ ] Real-time playback of data.csv samples at configurable rate
+- [ ] Two demo modes: **livestream** (pure real-data replay) and
+      **anomaly simulation** (real replay + injected fault scenarios); UI
+      dropdown switches between them
 - [ ] Per-sample "true fault part" labels for evaluation
 
 ### 2. Fault Injection (dynamical, FOPDT-style)
+- [ ] **Fault propagation matrix:** every injected fault drives *all*
+      physically-correlated sensors appropriately (per FOPDT coupling and the
+      process cause-chain), not just the primary tag — e.g. IDF degradation
+      shifts furnace pressure, flue-gas O₂, and economizer outlet temperature
 - [ ] Creeping faults: economizer fouling, IDF degradation, preheater fouling,
       hearth/layer ΔP drift
 - [ ] Abrupt/structural faults: water-wall tube leak, superheater tube leak,
@@ -108,6 +117,10 @@ but postponed.
 - [ ] Statistical/robust baselines: EWMA, MAD, Isolation Forest, One-Class SVM
 
 ### 2. Ensemble Fusion & Thresholds
+- [x] **Decision:** hybrid ensemble strategy (user-approved): 2–3 candidates
+      per part (TF autoencoder + LSTM-residual, plus Isolation Forest /
+      One-Class SVM baselines), weighted fusion with percentile thresholds,
+      fall back to single best model when one clearly dominates
 - [ ] Per-part weighted voting/averaging (weights learned on validation)
 - [ ] Score calibration: percentile thresholds on normal val slice
 - [ ] Select best-per-model when a single model dominates per part
@@ -122,7 +135,7 @@ but postponed.
 
 ---
 
-## Milestone 5 — Assimilation Layer (Phase D) ⏳ not started
+## Milestone 5 — Overview Layer — Overview Agent (Phase D) ⏳ not started
 
 ### 1. Situation Levels
 - [ ] Per-part situation: NOMINAL / WATCH / ALERT / CRITICAL from calibrated
@@ -133,7 +146,7 @@ but postponed.
 - [ ] Template-based explanation strings (situation, affected tags, values)
 - [ ] /api/situation endpoint (JSON) for dashboard polling
 
-**Checkpoint:** /api/situation produces coherent overviews.
+**Checkpoint:** /api/situation produces coherent overviews (Overview Agent).
 
 ---
 
@@ -150,11 +163,17 @@ but postponed.
 - [ ] /api/scenarios endpoint (list/start/stop simulation scenarios)
 
 ### 3. Demo Pages
-- [ ] Boiler recreation page (main demo page) with scenario sidebar +
-      situation-overview panel
+- [ ] Main demo page: boiler recreation with live sensor labels + scenario
+      colours (NOMINAL green → WATCH amber → ALERT orange → CRITICAL red)
+- [ ] **Live panel screen:** current sensor values, per-part situation levels,
+      Overview Agent situation summary
+- [ ] **Historical graphs:** per-tag time-series charts with anomaly flags /
+      scenario event overlay
+- [ ] **Mode dropdown/control:** switch between livestream mode (real replay)
+      and real anomaly simulations (fault scenario injection)
 - [ ] Per-part detail page (tags, sparklines, ensemble leaderboard,
       detection history)
-- [ ] Polling every 1–2 s via fetch/JSON
+- [ ] Polling every 1–2 s via fetch/JSON (basic server)
 
 **Checkpoint:** full demo runs end-to-end in browser.
 

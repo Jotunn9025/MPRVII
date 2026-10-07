@@ -1,7 +1,9 @@
 # plan.md — Project Plan (Phase 1 Demo + Future Extensions)
 
 **Status:** plan only — nothing implemented yet.
-**Approved by:** user (this plan drafted from user's instructions + dataset research).
+**Approved by:** user (drafted from user's instructions + dataset research;
+amended in review: hybrid ensemble, Overview Agent rename, livestream/
+simulation dropdown, live panel + historical graphs, basic server).
 **Rule:** AGENT.md governs workflow. ROADMAP.md (created after this plan is
 reviewed) will turn the Phase 1 section into checkpoints/tasks/subtasks.
 
@@ -90,23 +92,30 @@ and a Flask UI that recreates the boiler diagram with live sensor labels.
 1. Download data.csv (Kaggle/Figshare mirror). Map all 30 columns → boiler
    parts. EDA notebook/script: distributions, missing values, the headed/tailed
    split, per-part normal ranges.
-2. Build a **data simulator**: replay real data as a live 5-second stream
-   (normal mode) and inject **simulated anomalies** (drift/creep ramps, sudden
-   step faults, oscillation, sensor dropout) per part for demo and validation.
+2. Build a **data simulator** with two demo modes (UI dropdown switches):
+   - **Livestream mode:** replay data.csv as a live 5-second stream (pure real
+     data, no injected faults).
+   - **Anomaly simulation mode:** real replay + **injected fault scenarios**
+     (drift/creep ramps, sudden step faults, oscillation, sensor dropout).
+   - Injected anomalies must **affect sensors appropriately:** a fault
+     propagation matrix drives *all* physically-correlated tags per process
+     cause-chain (e.g. IDF degradation shifts furnace pressure, flue-gas O₂,
+     economizer outlet temperature), not just the primary tag.
 
-### 4.2 Anomaly detection per part (ensemble for best accuracy)
-- One or more detectors per part, trained on normal data only:
-  - TensorFlow-based: dense autoencoder, LSTM/temporal autoencoder,
-    (optionally) small TCN or one-class network.
-  - Non-TF baselines for the ensemble: Isolation Forest, One-Class SVM,
-    statistical thresholds on residuals.
-- **Ensemble fusion:** combine detector scores via weighted fusion / voting /
-    stacking on the validation stream (paper itself found weighted ensembles
-    best). Optimize thresholds for precision/recall vs. the simulated faults.
+### 4.2 Anomaly detection per part — **hybrid ensemble (user-approved)**
+- Per part, train 2–3 **candidate detectors on normal data only**:
+  - TensorFlow-based: dense autoencoder, LSTM/temporal prediction-residual
+    (optionally small TCN autoencoder or one-class network where it wins).
+  - Cheap non-TF baselines for the ensemble: Isolation Forest, One-Class SVM
+    (sanity checks that catch linear/simple faults).
+- **Ensemble fusion:** weighted fusion of detector scores with percentile
+  thresholds calibrated on the normal validation stream; **fall back to the
+  single best model** for a part when one candidate clearly dominates the
+  leaderboard.
 - Evaluate per part: precision, recall, F1, detection latency, false-alarm
   rate on normal stream.
 
-### 4.3 Assimilation / Organization agent
+### 4.3 Overview Agent (formerly assimilation/organization agent)
 - Ingests per-part ensemble results + sensor values.
 - Produces a **clear structured overview**: plant status (NORMAL / ALERT /
   CRITICAL), which parts are anomalous, severity, duration/creep trajectory
@@ -118,9 +127,15 @@ and a Flask UI that recreates the boiler diagram with live sensor labels.
 - Recreates the boiler (CFB layout: furnace, drum, water wall, superheater,
   economizer, separator, fans, feeder, pipeline) as a diagram with **current
   sensor values labelled on each part** and per-part status colors.
-- Panels: live time-series sparklines per part, ensemble score gauges,
-  anomaly flags, simulated fault-injection controls (to trigger faults in the
-  demo), and the assimilation agent's situation overview page.
+- Boiler diagram with **live display**: current sensor values labelled on
+  each part, **colours showing current scenario** (NOMINAL green → WATCH amber
+  → ALERT orange → CRITICAL red).
+- **Live panel screen:** current values, per-part situation levels, Overview
+  Agent situation summary.
+- **Historical graphs:** per-tag time-series charts with anomaly flags and
+  scenario event overlay.
+- **Mode dropdown:** switch between livestream mode (real replay) and real
+  anomaly simulations (fault scenario injection).
 - Basic Flask server, Jinja templates, minimal vanilla JS (polling for live
   updates). No SPA frameworks.
 
@@ -128,9 +143,10 @@ and a Flask UI that recreates the boiler diagram with live sensor labels.
 - `data.csv` ingested + column-to-part mapping documented.
 - Per-part ensemble anomaly-detection models (TensorFlow + baselines) with
   evaluation results.
-- Data simulator with normal + injected-anomaly modes.
-- Assimilation agent producing structured overviews + summaries.
-- Flask UI: boiler diagram with live sensor labels + overview page.
+- Data simulator with livestream + injected-anomaly modes (propagation-aware).
+- Overview Agent producing structured overviews + summaries.
+- Flask UI: boiler diagram with live sensor labels, live panel, historical
+  graphs, mode dropdown, overview page.
 - Tests for data, models (basic), agent, and UI pages.
 
 ## 5. Future phases (explicitly out of Phase 1 demo)
@@ -154,9 +170,9 @@ and a Flask UI that recreates the boiler diagram with live sensor labels.
 
 1. Confirm the actual CSV filename(s) and 30 variable names after downloading
    the dataset; finalize the part↔column mapping table (§3).
-2. Confirm simulated anomaly scenarios wanted in the demo (which parts, which
-   fault types, how visible).
-3. Confirm UI style/level (single-page diagram + overview, or multiple pages).
+2. ~~Resolved~~ Detection strategy: **hybrid ensemble** (user-approved).
+3. ~~Resolved~~ UI: single-page boiler diagram + live panel + historical
+   graphs + mode dropdown; basic Flask server.
 4. Confirm whether secondary datasets (NASA C-MAPSS, Tennessee Eastman) are in
    scope for Phase 1 or deferred.
 5. Python/uv project setup details (package name, TensorFlow version pinning).
