@@ -27,6 +27,10 @@ MODES = ("livestream", "simulation")
 #: A fault counts as "materially active" once its strongest effect reaches
 #: this fraction of a tag's IQR — used for objective ground-truth labels.
 ACTIVE_SEVERITY_THRESHOLD = 0.10
+#: "Established" = the fault has reached half a typical spread of the tag, the
+#: point at which detection is a fair expectation. Early (0.1-0.5 IQR) detection
+#: is reported separately rather than being required.
+ESTABLISHED_SEVERITY_THRESHOLD = 0.50
 
 
 @dataclass
@@ -265,6 +269,8 @@ class ScenarioController:
         worst = 0.0
         for effect in fault.effects:
             if effect.kind == "stuck":
+                # a frozen sensor is fully "active" from its onset
+                worst = max(worst, 1.0)
                 continue
             shape = F.response(
                 effect.kind,
@@ -301,6 +307,9 @@ class ScenarioController:
             "fault_elapsed_s": elapsed,
             "fault_severity": severity,
             "fault_active": bool(fault and severity >= ACTIVE_SEVERITY_THRESHOLD),
+            "fault_established": bool(
+                fault and severity >= ESTABLISHED_SEVERITY_THRESHOLD
+            ),
             "tailed_real": bool(
                 baseline[C.STATE_TAG] < low or baseline[C.STATE_TAG] > high
             ),

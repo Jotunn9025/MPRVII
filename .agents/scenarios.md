@@ -197,6 +197,10 @@ Gains are **multiples of each tag's IQR** measured from the real data (engineeri
 | `YFJ3_AI.AV_0` | Induced draft fan motor current | +0.35 | step | 10 s | 45 s | primary |
 | `TE_8319A.AV_0` | Flue gas temperature at the upper economizer outlet (left) | -0.20 | step | 20 s | 60 s | primary |
 | `TE_8319B.AV_0` | Flue gas temperature at the upper economizer outlet (right) | -0.20 | step | 20 s | 60 s | primary |
+| `FT_8301.AV_0` | Primary fan outlet flow rate | +0.55 | step | 10 s | 45 s | primary |
+| `FT_8302.AV_0` | Secondary fan outlet flow | +0.55 | step | 10 s | 45 s | primary |
+| `FT_8306A.AV_0` | Return air chamber air flow (left) | +0.45 | step | 15 s | 45 s | primary |
+| `FT_8306B.AV_0` | Return air chamber air flow (right) | +0.45 | step | 15 s | 45 s | primary |
 
 ### `sensor_outlier_spike` — Sensor outlier spike
 

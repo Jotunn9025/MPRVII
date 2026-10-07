@@ -305,6 +305,10 @@ FAULTS: dict[str, FaultSpec] = {
             _eff("TE_8313B.AV_0", -0.35, dead_time_s=20.0, tau_s=60.0),
             _eff("YFJ3_AI.AV_0", +0.35, dead_time_s=10.0, tau_s=45.0),
             *_group(ECON_FLUE_TEMPS, -0.2, dead_time_s=20.0, tau_s=60.0),
+            # draft upset makes the fans hunt and return-air flow shift, which
+            # is what the combustion-air and return-air parts actually see
+            *_group(("FT_8301.AV_0", "FT_8302.AV_0"), +0.55, dead_time_s=10.0, tau_s=45.0),
+            *_group(RETURN_AIR_FLOWS, +0.45, dead_time_s=15.0, tau_s=45.0),
         ),
     ),
     # ---------------- sensor faults (target configurable) ----------------
