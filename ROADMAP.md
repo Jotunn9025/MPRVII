@@ -196,6 +196,17 @@ between training configs, so they indicate rank rather than precise accuracy.
       abrupt faults by deviation magnitude
 - [x] Warm-up safe: reports NOMINAL with `score: null` until a full window exists
 
+### 2b. Plain-language narration (user feedback round)
+- [x] Optional **Groq** narration (`GROQ_API_KEY`, `BHEL_LLM_MODEL`,
+      `BHEL_LLM=off`): ≤2 short sentences from a compact facts payload; numbers
+      stay in the payload for the panels
+- [x] Safety rails: 5 s minimum interval, cache of identical situations, 6 s
+      timeout, and always fall back to templates on any failure; the panel says
+      which source wrote the text
+- [x] Template strings shortened from paragraphs to one line per part
+- [x] `update(frame, index, context=…)` lets the narrative know when a fault is
+      simulated (ground truth from the simulator)
+
 ### 2. Overview Strings & API
 - [x] Template-based explanation strings per part (level, score vs threshold,
       trend, duration, most deviating tags with IQR deviation, matched pattern,

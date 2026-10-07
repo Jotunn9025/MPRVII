@@ -270,7 +270,7 @@ def test_agent_escalates_with_sustained_high_scores():
     part = agent.update(frame, 40)["parts"]["drum"]
     assert part["duration_s"] > 0
     assert part["severity_iqr"] >= 0
-    assert "operator review" in part["explanation"].lower()
+    assert "review" in part["explanation"].lower()
 
 
 def test_agent_critical_needs_extreme_score():
@@ -280,7 +280,7 @@ def test_agent_critical_needs_extreme_score():
         overview = agent.update(frame, index)
     assert overview["parts"]["drum"]["level"] == "CRITICAL"
     assert overview["situation"]["level"] == "CRITICAL"
-    assert "CRITICAL" in overview["situation"]["summary"]
+    assert "critical" in overview["situation"]["summary"].lower()
 
 
 def test_agent_criticality_is_reported_without_inflating_level():
@@ -331,7 +331,7 @@ def test_agent_reports_probable_pattern_and_top_tags():
         "id_fan_degradation",
         "id_fan_bearing_failure",
     }
-    assert "Pattern matches" in part["explanation"]
+    assert "likely" in part["explanation"].lower()
 
 
 def test_agent_attention_list_is_ordered_by_severity():
@@ -433,3 +433,115 @@ def test_agent_end_to_end_with_trained_artifacts():
     assert id_fan["level_index"] >= WATCH
     assert overview["situation"]["level_index"] >= WATCH
     assert id_fan["score"] > 0
+
+
+# --------------------------------------------------------------------------
+# Groq narration (no network: the HTTP call is stubbed)
+# --------------------------------------------------------------------------
+
+
+class _FakeResponse:
+    def __init__(self, text: str, status: int = 200) -> None:
+        self._text = text
+        self.status_code = status
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self) -> dict:
+        return {"choices": [{"message": {"content": self._text}}]}
+
+
+def _narrator(**kwargs):
+    from bhel_optimize.overview.llm import GroqNarrator
+
+    return GroqNarrator(api_key="test-key", min_interval_s=0.0, **kwargs)
+
+
+def test_narrator_disabled_without_key(monkeypatch):
+    from bhel_optimize.overview.llm import GroqNarrator
+
+    narrator = GroqNarrator(api_key=None)
+    assert narrator.available is False
+    assert narrator.summarise({"plant_level": "NOMINAL"}) == (None, "template")
+
+
+def test_narrator_returns_model_text(monkeypatch):
+    import requests
+
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("Boiler steady; drum drifting slightly high.")
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    narrator = _narrator()
+    text, source = narrator.summarise({"plant_level": "WATCH", "parts": []})
+    assert source == "groq"
+    assert text.startswith("Boiler steady")
+    assert narrator.calls == 1
+    # the request carries the key, the model and a bounded output budget
+    body = calls[0]["json"]
+    assert calls[0]["headers"]["Authorization"] == "Bearer test-key"
+    assert body["model"] and body["max_tokens"] <= 200
+    assert "two short sentences" in body["messages"][0]["content"].lower()
+
+
+def test_narrator_caches_identical_situations(monkeypatch):
+    import requests
+
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("Same situation.")
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    narrator = _narrator()
+    facts = {"plant_level": "NOMINAL", "parts": []}
+    assert narrator.summarise(facts)[1] == "groq"
+    assert narrator.summarise(facts)[1] == "groq"
+    assert len(calls) == 1, "identical facts must not hit the API twice"
+
+
+def test_narrator_falls_back_on_error(monkeypatch):
+    import requests
+
+    def boom(url, **kwargs):
+        raise TimeoutError("groq timeout")
+
+    monkeypatch.setattr(requests, "post", boom)
+    narrator = _narrator()
+    text, source = narrator.summarise({"plant_level": "ALERT"})
+    assert (text, source) == (None, "template")
+    assert "TimeoutError" in (narrator.last_error or "")
+
+
+def test_narrator_falls_back_on_empty_completion(monkeypatch):
+    import requests
+
+    monkeypatch.setattr(requests, "post", lambda url, **kw: _FakeResponse("   "))
+    narrator = _narrator()
+    assert narrator.summarise({"plant_level": "WATCH"}) == (None, "template")
+
+
+def test_agent_uses_narrator_when_available():
+    agent, _stubs, frame = _agent(part_keys=("drum",))
+    agent.narrator = _narrator()
+    agent.narrator._request = lambda facts: "Drum is steady."  # type: ignore[assignment]
+    overview = agent.update(frame, 20)
+    assert overview["situation"]["summary"] == "Drum is steady."
+    assert overview["situation"]["narrative_source"] == "groq"
+    assert overview["situation"]["facts"]["plant_level"] == "NOMINAL"
+
+
+def test_agent_reports_simulated_fault_in_facts():
+    agent, _stubs, frame = _agent(part_keys=("drum",))
+    context = {"fault_part": "drum", "fault_key": "water_wall_tube_leak", "fault_active": True,
+               "tailed_observed": False}
+    overview = agent.update(frame, 20, context=context)
+    facts = overview["situation"]["facts"]
+    assert facts["simulated_fault"]["part"] == "Steam Drum & Pot"
+    assert facts["simulated_fault"]["active"] is True

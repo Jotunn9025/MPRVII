@@ -443,6 +443,14 @@
     if (summary) {
       summary.textContent = situation.situation.summary;
       summary.dataset.level = situation.situation.level;
+      const source = situation.situation.narrative_source;
+      const model = situation.situation.narrative_model;
+      const tag = source === "groq" && model
+        ? `written by Groq · ${model}`
+        : (source === "throttled" ? "template summary (model rate-limited)" : "template summary");
+      summary.title = tag;
+      const hint = $("agent-source");
+      if (hint) hint.textContent = tag;
     }
     const list = $("agent-list");
     if (!list) return;

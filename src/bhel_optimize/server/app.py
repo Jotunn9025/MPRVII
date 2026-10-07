@@ -32,7 +32,9 @@ def live_payload(agent: OverviewAgent, controller, *, advance: bool = True) -> d
     """Trimmed payload for fast polling: levels, scores and current values."""
     if advance:
         controller.tick()
-    overview = agent.update(controller.frame, controller.position)
+    overview = agent.update(
+        controller.frame, controller.position, context=controller.snapshot()["labels"]
+    )
     snapshot = controller.snapshot()
     payload = {
         "position": overview["position"],
@@ -47,6 +49,8 @@ def live_payload(agent: OverviewAgent, controller, *, advance: bool = True) -> d
             "level": overview["situation"]["level"],
             "counts": overview["situation"]["counts"],
             "summary": overview["situation"]["summary"],
+            "narrative_source": overview["situation"].get("narrative_source"),
+            "narrative_model": overview["situation"].get("narrative_model"),
             "criticality_escalated": overview["situation"]["criticality_escalated"],
         },
         "parts": {

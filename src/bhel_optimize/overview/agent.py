@@ -24,8 +24,10 @@ from bhel_optimize import config as C
 from bhel_optimize.data import chronological_split, fit_scalers, load_scalers, save_scalers, transform_tags
 from bhel_optimize.detection.ensembles import PartEnsemble, ensemble_dir, load_part_ensemble
 from bhel_optimize.detection.windows import augment_with_differences, build_windows, part_tags
+from bhel_optimize.overview.llm import GroqNarrator
 from bhel_optimize.overview.situation import (
     ALERT,
+    CRITICAL,
     LEVEL_NAMES,
     NOMINAL,
     WATCH,
@@ -56,6 +58,8 @@ class OverviewAgent:
     history_limit: int = 240  # samples of per-part score kept for the UI
     #: windows sampled per part when measuring the clean-data score distribution
     band_sample_windows: int = 1500
+    #: optional hosted narration (falls back to the templates when unavailable)
+    narrator: GroqNarrator = field(default_factory=GroqNarrator)
 
     def __post_init__(self) -> None:
         for key, ensemble in self.ensembles.items():
@@ -196,11 +200,15 @@ class OverviewAgent:
     # situation
     # ------------------------------------------------------------------
 
-    def update(self, frame: pd.DataFrame, index: int) -> dict:
-        """Advance the agent by one sample and return the situation overview."""
+    def update(self, frame: pd.DataFrame, index: int, context: dict | None = None) -> dict:
+        """Advance the agent by one sample and return the situation overview.
+
+        ``context`` optionally carries the simulator's ground truth (which part a
+        fault was injected on) so the narrative can say so.
+        """
         scores = self.part_scores(frame, index)
         deviations = self.part_deviations(frame, index)
-        return self._build_overview(index, scores, deviations, frame)
+        return self._build_overview(index, scores, deviations, frame, context)
 
     def reset(self) -> None:
         for state in self.states.values():
@@ -212,6 +220,7 @@ class OverviewAgent:
         scores: dict[str, float],
         deviations: dict[str, dict[str, float]],
         frame: pd.DataFrame,
+        context: dict | None = None,
     ) -> dict:
         parts: dict[str, dict] = {}
         for key, ensemble in self.ensembles.items():
@@ -287,6 +296,8 @@ class OverviewAgent:
             (info for info in parts.values() if info["level_index"] >= WATCH),
             key=lambda info: (-info["level_index"], -info["criticality"]),
         )
+        facts = self._facts(boiler, counts, attention, escalated, context)
+        narrative, source = self.narrator.summarise(facts)
         return {
             "position": int(index),
             "timestamp": frame.iloc[index][C.DATE_COLUMN].isoformat(),
@@ -295,7 +306,11 @@ class OverviewAgent:
                 "level_index": boiler,
                 "label": f"PLANT {LEVEL_NAMES[boiler]}",
                 "counts": counts,
-                "summary": self._plant_summary(boiler, attention, counts, escalated),
+                "summary": narrative or self._plant_summary(boiler, attention, counts, escalated),
+                "narrative_source": source,
+                "narrative_model": self.narrator.model if source == "groq" else None,
+                "narrative_error": self.narrator.last_error,
+                "facts": facts,
                 "worst_parts": [info["key"] for info in attention[:3]],
                 "criticality_escalated": escalated,
             },
@@ -317,6 +332,44 @@ class OverviewAgent:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _facts(
+        boiler: int,
+        counts: dict,
+        attention: list[dict],
+        escalated: list[str],
+        context: dict | None,
+    ) -> dict:
+        """The minimum an operator (or a small model) needs to summarise."""
+        facts: dict = {
+            "plant_level": LEVEL_NAMES[boiler],
+            "counts": {k: v for k, v in counts.items() if v},
+            "parts_needing_attention": [
+                {
+                    "part": info["name"],
+                    "level": info["level"],
+                    "trend": info["trend"],
+                    "deviation_iqr": info["severity_iqr"],
+                    "most_deviating_tag": info["top_tags"][0]["tag"] if info["top_tags"] else None,
+                    "likely_pattern": info["pattern"]["name"] if info["pattern"] else None,
+                }
+                for info in attention[:4]
+            ],
+        }
+        if escalated:
+            facts["safety_critical_parts_on_watch"] = [C.PARTS[k].name for k in escalated[:2]]
+        if context:
+            part_key = context.get("fault_part")
+            if part_key:
+                part = C.PARTS.get(part_key)
+                facts["simulated_fault"] = {
+                    "part": part.name if part else part_key,
+                    "fault": context.get("fault_key"),
+                    "active": bool(context.get("fault_active")),
+                }
+            facts["steam_temperature_out_of_band"] = bool(context.get("tailed_observed"))
+        return facts
+
+    @staticmethod
     def _explain_part(
         part_key: str,
         level: int,
@@ -330,28 +383,21 @@ class OverviewAgent:
     ) -> str:
         name = C.PARTS[part_key].name
         if level == NOMINAL and not top_tags:
-            return f"{name}: nominal, no tag deviating beyond its normal spread."
+            return f"{name}: nominal."
         tag_text = ", ".join(
-            f"{C.TAG_INFO[tag]} {value:+.1f} IQR" for tag, value in top_tags
-        ) or "no significant deviation"
-        trend_text = {"rising": "worsening", "falling": "improving", "steady": "steady"}[trend]
-        head = (
-            f"{name}: {LEVEL_NAMES[level]} (score {score:.2f} vs threshold {threshold:.2f},"
-            f" {trend_text}"
-            + (f" for {duration_s / 60:.0f} min" if duration_s >= 60 else "")
-            + ")."
-        )
-        body = f" Most deviating tags — {tag_text}."
+            f"{C.TAG_INFO[tag].split('(')[0].strip().lower()} {value:+.1f} IQR"
+            for tag, value in top_tags[:2]
+        ) or "no clear deviation"
+        trend_text = {"rising": "and rising", "falling": "but easing", "steady": ""}[trend]
+        text = f"{name}: {LEVEL_NAMES[level].lower()} — {tag_text} {trend_text}".rstrip()
+        if duration_s >= 300:
+            text += f" (held {duration_s / 60:.0f} min)"
+        text += "."
         if pattern:
-            body += (
-                f" Pattern matches {pattern['name']}"
-                f" ({pattern['category']}, confidence {pattern['confidence']:.2f})."
-            )
+            text += f" Likely {pattern['name'].lower()}."
         if level >= ALERT:
-            body += " Recommend operator review."
-        elif level == WATCH:
-            body += " Trend worth watching."
-        return head + body
+            text += " Operator review." if level == CRITICAL else " Review advised."
+        return text
 
     @staticmethod
     def _plant_summary(
@@ -361,23 +407,14 @@ class OverviewAgent:
             note = ""
             if escalated:
                 names = ", ".join(C.PARTS[key].name for key in escalated[:2])
-                note = f" Sustained watch on safety-critical part(s): {names}."
-            return (
-                "Plant nominal: all monitored parts within their normal operating"
-                " envelope." + note
-            )
-        names = ", ".join(f"{info['name']} ({info['level']})" for info in attention[:3])
-        extra = (
-            f" +{len(attention) - 3} more" if len(attention) > 3 else ""
-        )
+                note = f" Watching safety-critical {names}."
+            return "All parts within their normal range." + note
+        names = ", ".join(f"{info['name']} ({info['level'].lower()})" for info in attention[:2])
+        extra = f" and {len(attention) - 2} more" if len(attention) > 2 else ""
         top = attention[0]
         pattern = top.get("pattern")
-        pattern_text = f" Most consistent with {pattern['name']}." if pattern else ""
-        return (
-            f"PLANT {LEVEL_NAMES[boiler]}: {counts['CRITICAL']} critical,"
-            f" {counts['ALERT']} alert, {counts['WATCH']} watch. Attention —"
-            f" {names}{extra}.{pattern_text}"
-        )
+        pattern_text = f" Likely {pattern['name'].lower()}." if pattern else ""
+        return f"Plant {LEVEL_NAMES[boiler].lower()} — {names}{extra}.{pattern_text}"
 
     # ------------------------------------------------------------------
     # payload helpers

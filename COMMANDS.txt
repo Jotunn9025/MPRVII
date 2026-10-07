@@ -1,0 +1,54 @@
+COMMANDS — BHEL-Optimize boiler monitoring
+==========================================
+
+INSTALL
+  cd ~/projects/MPRVII
+  uv sync
+
+RUN UI
+  uv run python -m bhel_optimize.server                  # http://127.0.0.1:5000
+  uv run python -m bhel_optimize.server --speed 40       # faster playback
+  uv run python -m bhel_optimize.server --port 8000
+  uv run python -m bhel_optimize.server --host 0.0.0.0
+
+TRAIN DETECTORS (only if models are missing or you change detectors/scenarios)
+  uv run python -m bhel_optimize.detection.train                        # all 10 parts, ~4 min
+  uv run python -m bhel_optimize.detection.train --parts furnace        # one part, ~30 s
+  uv run python -m bhel_optimize.detection.train --include-heavy        # + transformer
+  uv run python -m bhel_optimize.detection.train --epochs 10 --max-windows 4000
+  uv run python -m bhel_optimize.detection.train --threshold-mode target-far --false-alarm-rate 0.01
+
+WHEN TO RETRAIN
+  no models in artifacts/detection/models/          -> train
+  changed simulation/faults.py                      -> train
+  only want different level bands (situation.py)    -> just restart the server (~25 s)
+
+REGENERATE DOCS
+  uv run python -m bhel_optimize.simulation.report > .agents/scenarios.md
+
+TESTS
+  uv run pytest                # fast suite
+  uv run pytest -m slow        # end-to-end (trains a part)
+
+OPTIONAL GROQ SUMMARY
+  export GROQ_API_KEY=gsk_...
+  export BHEL_LLM_MODEL=llama-3.1-8b-instant
+  export BHEL_LLM=off          # force templates
+  uv run python -m bhel_optimize.server
+
+DEMO FLOW IN UI
+  Mode -> anomaly simulation
+  Scenario -> pick a ★ preset
+  Inject fault              (held until Stop fault)
+  Diagram colours -> simulated fault (demo mode)   [labelled ground-truth colouring]
+  Historical view tab       (per-part and per-tag panels, own axes)
+
+DATA REQUIRED (git-ignored, must exist in data/)
+  data/data.csv
+  data/data_AutoReg.csv
+  data/columns.csv
+
+IF SOMETHING BREAKS
+  "no fitted ensembles found"      -> run TRAIN DETECTORS
+  black boxes / stale page         -> hard refresh once (Ctrl+Shift+R)
+  libdevice / JIT errors           -> uv sync (pulls nvidia-cuda-nvcc-cu12)

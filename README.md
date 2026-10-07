@@ -35,6 +35,25 @@ uv run python -m bhel_optimize.server --speed 40 --port 8000
    data, and open a **part detail** page (click a part then the link, or
    `/part/id_fan`) for bands, ensemble weights and per-tag deviations.
 
+## Overview Agent narration (optional Groq)
+
+The situation summary is short plain English. Without an API key it is built
+from templates; with a key the agent asks a small hosted model instead (the raw
+numbers stay in the API payload for the panels):
+
+```bash
+export GROQ_API_KEY=gsk_...            # enables narration
+export BHEL_LLM_MODEL=llama-3.1-8b-instant   # default; any Groq chat model
+export BHEL_LLM=off                    # force templates even with a key
+```
+
+Safety: one call per situation at most every 5 s, identical situations are
+cached, the request times out after 6 s, and **any** failure (missing key,
+timeout, bad response) silently falls back to the template text — the panel
+shows whether the text came from the model (`written by Groq · <model>`) or the
+templates. `python -m bhel_optimize.overview.llm` is not needed; tests stub the
+HTTP call, so the suite never touches the network.
+
 ## Retraining the detectors
 
 ```bash
