@@ -25,28 +25,60 @@ plants, exposed through a Flask web UI.
 
 ## Tech Stack (fixed unless the user says otherwise)
 
-- **Language:** Python 3 (managed by `uv`)
-- **ML framework:** TensorFlow (Keras API)
+- **Language:** Python 3.13 (managed by `uv`)
+- **ML framework:** TensorFlow 2.21 (Keras API) — **GPU build, verified working**
+  (`GPU:0` = RTX 4050 Laptop; nix-ld enabled so the pip wheel loads on NixOS)
 - **Backend/UI:** Flask (Jinja templates + minimal CSS/JS for dashboards)
 - **Data:** CSV/JSON synthetic + reference datasets (no proprietary data)
 - **Testing:** `pytest`
 - **Style:** PEP 8, type hints where practical, docstrings on public functions
+- **Package:** import as `bhel_optimize` (uv project name `bhel_optimize`)
+- **Lockfile:** `uv.lock` is committed — keep it in sync with `uv add`/`uv sync`
 
 ## Repository Layout (evolve as needed)
 
 ```
 MPRVII/
 ├── AGENT.md          # this file — rules for agents
-├── ROADMAP.md        # the bible: all tasks, checkpoints, status (created only
-│                     # once the user has explained the plan)
-├── .agents/          # agent working notes, decisions, scratch docs
-├── pyproject.toml    # uv-managed project
-├── data/             # datasets (raw + processed)
-├── src/              # source code (model, agents, server)
+├── ROADMAP.md        # the bible: all tasks, checkpoints, status
+├── plan.md           # approved Phase 1 plan + future phases
+├── .agents/          # onboarding knowledge & working notes (see below)
+│   ├── boiler.md     #   boiler anatomy, sensors, failure modes
+│   ├── dataset.md    #   dataset facts, all 30 tags, labelling rule
+│   └── architecture.md  # system architecture (created in implementation)
+├── pyproject.toml    # uv-managed project (package: bhel_optimize)
+├── uv.lock           # committed lockfile (reproducible TF/CUDA pins)
+├── data/             # datasets (git-ignored, user-supplied CSVs)
+├── artifacts/        # generated: scalers, models, leaderboards (git-ignored)
+├── src/bhel_optimize/
+│   ├── config.py     #   tags, part map, criticality, thresholds (source of truth)
+│   ├── data/         #   loader.py, preprocess.py
+│   ├── simulation/   #   scenario controller + fault injection (M3)
+│   ├── detection/    #   per-part hybrid ensembles (M4)
+│   ├── overview/     #   Overview Agent (M5)
+│   └── server/       #   Flask app (M6)
 ├── templates/        # Flask templates
 ├── static/           # CSS/JS assets
 └── tests/            # pytest suites
 ```
+
+## Onboarding Knowledge (`.agents/`) — READ FIRST
+
+New agent sessions **must** read these before writing code; they are the
+project's anti-context-drift memory:
+
+- **`.agents/boiler.md`** — boiler anatomy, monitored parts/sensors, creeping
+  and structural failure modes. **Append/update it** whenever new domain
+  knowledge is learned.
+- **`.agents/dataset.md`** — dataset facts, all 30 tags, the anomaly-labelling
+  rule, dataset quirks. **Append/update it** when data findings change
+  (e.g. measured vs. paper-stated values).
+- **`.agents/architecture.md`** — created during implementation; keep the data
+  → detection → overview → UI flow and module map up to date.
+
+`.agents/` files record **verified facts only**. Never record a dataset, tool
+or paper as fact unless it was checked in this project. If something is
+unverified, say so explicitly or omit it.
 
 ## Workflow Rules (non-negotiable)
 
@@ -80,7 +112,8 @@ MPRVII/
 6. **Agents must verify their work:** run tests / start the Flask app before
    declaring a task complete.
 7. **Notes:** put decisions, research summaries, and design sketches in
-   `.agents/` (e.g., `.agents/decisions.md`). Keep ROADMAP.md clean and
+   `.agents/` — and keep the onboarding docs (`boiler.md`, `dataset.md`,
+   `architecture.md`) updated as the project learns. Keep ROADMAP.md clean and
    task-focused.
 
 ## Definition of Done (per task)

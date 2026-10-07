@@ -43,36 +43,43 @@ but postponed.
 
 ---
 
-## Milestone 2 — Data Layer (Phase A) ⏳ not started
+## Milestone 2 — Data Layer (Phase A) ✅ complete
 
 ### 1. Project & Environment Setup
-- [ ] Initialize uv project (pyproject.toml, Python 3)
-- [ ] Add dependencies (TensorFlow, NumPy, Pandas, Flask, pytest, kagglehub)
-- [ ] Create src/tests/templates/static package layout
-- [ ] Set up pytest suite skeleton
+- [x] Initialize uv project (pyproject.toml, Python 3.13 via `uv`)
+- [x] Add dependencies (tensorflow 2.21 **GPU build verified** (RTX 4050), NumPy,
+      Pandas, Flask, scikit-learn, matplotlib, joblib, pytest) — `uv.lock` committed
+- [x] Create src/tests/templates/static package layout (package `bhel_optimize`)
+- [x] Set up pytest suite skeleton (43 tests passing)
 
 ### 2. Dataset Download
-- [ ] Download Kaggle data.csv via kagglehub (needs Kaggle credentials — ask user)
-- [ ] Fallback: figshare original dataset (public, no key) if Kaggle fails
-- [ ] Verify download: shape 86,400 × 30, date range 27 Mar–1 Apr 2022
+- [x] Dataset obtained — **user supplied `data/data.csv`, `data/data_AutoReg.csv`,
+      `data/columns.csv`** (no Kaggle credentials / figshare needed)
+- [x] Verified on shipped files: 86,400 × 30, 27 Mar–1 Apr 2022 (5 days exactly),
+      every interval 5 s, raw has 30 NaNs in `YJJWSLL.AV_0`, imputed has 0
 
 ### 3. Load & Clean
-- [ ] Write loader for data.csv (30 tags with descriptions in config)
-- [ ] Handle missing values (interpolation fallback; AutoReg already applied)
-- [ ] Sanity checks: value ranges, monotonic timestamps/indices
+- [x] Write loader for data.csv (30 tags; `#` suffix stripped; map by name, not
+      position; descriptions in `config.TAG_INFO`)
+- [x] Handle missing values (time-interpolation / linear / drop implemented and
+      tested; AutoReg-imputed file used as canonical source)
+- [x] Sanity checks (`sanity_report`: shape, missing per tag, time range,
+      monotonicity, interval histogram)
 
 ### 4. Preprocess & Split
-- [ ] Per-tag normalization (train-fit scalers only)
-- [ ] Chronological train/val/test split (time-series aware, no shuffle)
-- [ ] Produce "normal" slice (TE_8332A within 530–545 °C) and "tailed" test slice
-- [ ] Resampling for playback/simulation rates
+- [x] Per-tag normalization (train-fit `RobustScaler`/`StandardScaler` per tag,
+      joblib persistence)
+- [x] Chronological train/val/test split (70/15/15 = 60480/12960/12960, no shuffle)
+- [x] Produce "normal" slice (TE_8332A within 530–545 °C) and "tailed" slice
+      (measured tailed share 8.14%)
+- [x] Resampling for playback/simulation rates (`resample`, 1 min → 7201 rows)
 
 ### 5. Part–Tag Map (single source of truth)
-- [ ] Encode 30 tags → boiler parts in src/config.py
-- [ ] Encode part criticality weights (safety-critical parts higher)
-- [ ] Unit tests for part map coverage (all 30 tags assigned, no orphans)
+- [x] Encode 30 tags → 10 boiler parts in `src/bhel_optimize/config.py`
+- [x] Encode part criticality weights (1–5; furnace/drum/main-steam = 5)
+- [x] Unit tests for part map coverage (all 30 tags assigned, no orphans/dupes)
 
-**Checkpoint:** data/ populated, part map in config, all tests pass.
+**Checkpoint:** data/ populated, part map in config, all tests pass. ✅
 
 ---
 

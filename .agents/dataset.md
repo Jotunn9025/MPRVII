@@ -17,10 +17,20 @@
 
 - Coal-fired **circulating fluidized bed (CFB)** boiler in a **chemical plant,
   Zhejiang, China**.
-- Collected **27 Mar 2022 – 1 Apr 2022** (≈6 days), **5-second intervals**,
+- Collected **27 Mar 2022 – 1 Apr 2022** (**exactly 5 days**, 27 Mar 14:28:54 →
+  1 Apr 14:28:49), **5-second intervals** (all 86,399 deltas = 5 s),
   **86,400 samples**, **30 sensor variables** via DCS real-time database.
-- Data quality: 2 missing values in `YJJWSLL.AV_0`, filled by AutoReg in the
-  completed version. Otherwise clean.
+- Data quality (verified on the shipped CSVs):
+  - `data.csv` (as published) has **30 missing values, all in `YJJWSLL.AV_0`**
+    — the paper text says "two missing values" but the gap it imputes spans
+    ~30 samples (timesteps 11444–11471), which matches the 30 NaNs found.
+  - `data_AutoReg.csv` (AutoReg-imputed, shipped alongside) has **0 missing
+    values** — use this as the canonical clean source.
+  - CSV headers carry a trailing `#` (e.g. `PT_8313A.AV_0#`) and column
+    **order differs** from `columns.csv` → always map by name, never position.
+  - `columns.csv` declares a `Description` column but all 30 rows only carry
+    two fields (description empty) → use the tag names; descriptions are in
+    this file and in `config.TAG_INFO`.
 
 ## Anomaly labelling (important)
 
@@ -28,7 +38,8 @@
   state-discriminating parameter.
   - 530 °C ≤ T ≤ 545 °C → **normal** ("headed data")
   - outside that range → **anomaly** ("tailed data")
-  - anomalies ≈ **8.6%** of samples → **long-tailed distribution**.
+  - anomalies ≈ **8.14%** of samples measured on the shipped data (paper states
+    **8.6%**) → **long-tailed distribution**.
 - Anomalies ARE labelled, but by a **single global rule on one tag** — not
   per-boiler-part fault labels. Per-part anomalies must come from simulation
   (dynamical fault injection) or synthetic generation for the demo.
